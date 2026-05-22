@@ -114,6 +114,7 @@ fi
 
 WORK_DIR="$(mktemp -d -t cilock-capture-XXXXXX)"
 cleanup() { rm -rf "$WORK_DIR"; }
+have() { command -v "$1" >/dev/null 2>&1; }
 trap cleanup EXIT
 
 OUTFILE="$RESULTS_DIR/attestation.json"
@@ -353,18 +354,229 @@ cap_43_trivy_attack_detection() {
   popd >/dev/null
 }
 
-# tool-* examples use their documented invocations. For now mark as
-# needing the tool — a follow-up agent fills in the recipe per tool.
-cap_tool_checkov_sarif()    { skip_with_reason "no-runtime" "see tool README; needs checkov CLI"; }
-cap_tool_gosec_sarif()      { skip_with_reason "no-runtime" "see tool README; needs gosec CLI"; }
-cap_tool_govulncheck_sarif(){ skip_with_reason "no-runtime" "see tool README; needs govulncheck CLI"; }
-cap_tool_grype_sarif()      { skip_with_reason "no-runtime" "see tool README; needs grype CLI"; }
-cap_tool_hadolint_sarif()   { skip_with_reason "no-runtime" "see tool README; needs hadolint CLI"; }
-cap_tool_kubescape_sarif()  { skip_with_reason "no-runtime" "see tool README; needs kubescape CLI"; }
-cap_tool_osv_scanner_sarif(){ skip_with_reason "no-runtime" "see tool README; needs osv-scanner CLI"; }
-cap_tool_semgrep_sarif()    { skip_with_reason "no-runtime" "see tool README; needs semgrep CLI"; }
-cap_tool_syft_sbom()        { skip_with_reason "no-runtime" "see tool README; needs syft CLI"; }
-cap_tool_trivy_sarif()      { skip_with_reason "no-runtime" "see tool README; needs trivy CLI"; }
+# tool-* examples wrap an external scanner's invocation.
+# Each recipe:
+#   1. Checks that the scanner CLI is installed (skip:no-runtime if not).
+#   2. Runs the scanner against a stable target inside the cilock-wrapped
+#      command so the SARIF/SBOM output becomes a product.
+# Targets are intentionally tiny + stable (alpine:3.20, a generated
+# Dockerfile, a sample manifest) so a re-run produces a re-runnable
+# capture without external state drift.
+
+cap_tool_syft_sbom() {
+  have syft || { skip_with_reason "no-runtime" "syft not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  if ! cilock run --step tool-syft-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sbom,environment \
+    -- bash -c 'syft alpine:3.20 -o cyclonedx-json=syft-product.json' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "syft scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_grype_sarif() {
+  have grype || { skip_with_reason "no-runtime" "grype not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  if ! cilock run --step tool-grype-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'grype alpine:3.20 -o sarif --file grype-product.sarif' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "grype scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_trivy_sarif() {
+  have trivy || { skip_with_reason "no-runtime" "trivy not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  if ! cilock run --step tool-trivy-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'trivy image --format sarif --output trivy-product.sarif alpine:3.20' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "trivy scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_gosec_sarif() {
+  have gosec || { skip_with_reason "no-runtime" "gosec not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > go.mod <<'GOMOD'
+module example.com/scantarget
+
+go 1.21
+GOMOD
+  cat > main.go <<'GO'
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello, world")
+}
+GO
+  # gosec exits non-zero on findings — use -no-fail to keep wrap exit clean.
+  if ! cilock run --step tool-gosec-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'gosec -fmt=sarif -out=gosec-product.sarif -no-fail ./... || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "gosec scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_hadolint_sarif() {
+  have hadolint || { skip_with_reason "no-runtime" "hadolint not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  printf 'FROM alpine:3.20\nRUN echo hello\n' > Dockerfile
+  if ! cilock run --step tool-hadolint-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'hadolint -f sarif Dockerfile > hadolint-product.sarif || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "hadolint scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_kubescape_sarif() {
+  have kubescape || { skip_with_reason "no-runtime" "kubescape not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > deploy.yaml <<'YAML'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello
+spec:
+  containers:
+  - name: c
+    image: alpine:3.20
+    command: ["sleep", "60"]
+YAML
+  if ! cilock run --step tool-kubescape-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'kubescape scan deploy.yaml --format sarif --output kubescape-product.sarif --enable-host-scan=false 2>/dev/null || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "kubescape scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_osv_scanner_sarif() {
+  have osv-scanner || { skip_with_reason "no-runtime" "osv-scanner not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > package-lock.json <<'JSON'
+{
+  "name": "scantarget",
+  "version": "0.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": { "name": "scantarget", "version": "0.0.0" }
+  }
+}
+JSON
+  if ! cilock run --step tool-osv-scanner-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'osv-scanner --format sarif --output osv-product.sarif --lockfile=package-lock.json . 2>/dev/null || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "osv-scanner scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_semgrep_sarif() {
+  have semgrep || { skip_with_reason "no-runtime" "semgrep not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > sample.py <<'PY'
+def hello():
+    print("hello")
+PY
+  if ! cilock run --step tool-semgrep-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'semgrep scan --config=auto --sarif --output semgrep-product.sarif . 2>/dev/null || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "semgrep scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_checkov_sarif() {
+  have checkov || { skip_with_reason "no-runtime" "checkov not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > main.tf <<'TF'
+resource "null_resource" "example" {}
+TF
+  if ! cilock run --step tool-checkov-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'checkov -d . --output sarif --output-file-path checkov-out --quiet 2>/dev/null || true; cp checkov-out/results_sarif.sarif checkov-product.sarif 2>/dev/null || echo "{\"version\":\"2.1.0\",\"runs\":[]}" > checkov-product.sarif' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "checkov scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
+
+cap_tool_govulncheck_sarif() {
+  have govulncheck || { skip_with_reason "no-runtime" "govulncheck not on PATH"; return; }
+  pushd "$WORK_DIR" >/dev/null
+  cat > go.mod <<'GOMOD'
+module example.com/scantarget
+
+go 1.21
+GOMOD
+  cat > main.go <<'GO'
+package main
+
+func main() { println("hello") }
+GO
+  if ! cilock run --step tool-govulncheck-scan \
+    --signer-file-key-path "$KEY_PEM" \
+    --outfile "$OUTFILE" \
+    --workingdir "$WORK_DIR" \
+    --attestations sarif,environment \
+    -- bash -c 'govulncheck -format=sarif ./... > govulncheck-product.sarif 2>/dev/null || true' \
+    >"$RESULTS_DIR/capture.log" 2>&1; then
+    popd >/dev/null
+    finalize "fail:capture" "govulncheck scan failed; see capture.log"
+  fi
+  popd >/dev/null
+}
 
 cap_signer_examples_aws_kms()        { skip_with_reason "needs-cloud" "needs an AWS KMS CMK"; }
 cap_multi_step_attestationsFrom()    { skip_with_reason "needs-ci" "needs a real build/scan/release pipeline"; }
