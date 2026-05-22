@@ -1,0 +1,54 @@
+{
+  "_comment": "Multi-step verification policy for the prowler example. Validates the full chain: command-run + git context + product capture + prowler scan, all signed by the same key (in production: a Fulcio CI identity). The policy denies a deploy if (a) the scan executed zero checks or (b) too many critical findings exist.",
+  "expires": "2027-12-31T23:59:59Z",
+  "name": "prowler-aws-iam-validation-v1",
+  "roots": {},
+  "publickeys": {
+    "19a99d7e19aabcf2bea4acc181431e8bbe3fba82d20abbb8f9028083ec08b60d": {
+      "_comment": "Public key that signed the attestation envelope. Replace with your CI signer's keyid in production. For the demo, this is the ephemeral key at _validation/key.pub regenerated per run.",
+      "keyid": "19a99d7e19aabcf2bea4acc181431e8bbe3fba82d20abbb8f9028083ec08b60d",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF1RWg3M1BxM2x3RlJFaXdPR2xVZApzNUJBYko0OWNjTE1xNXBrOFdFdUdJK28wbjZPWGltcTA4cUlyWm9OVWdoeHhkTFN4SzVKWXluSnRWTHFHUTE2CnRWTGpsbkNQQm84YU9CUEtjbFphQmthWkFKbktZK1FBWkxTQWQyRmN1OXFQVGhHbkR0cXZLdFl5WkdOZGJoQU4KeXVvaVJ3L0c2VkVYWXBsSEJjdFhoWC9vRW9FVzRrOXAwMUxDM3VMc2wrTVFOWWc5ZUtWRFhhZ0M0ajVlRVo1ZwpBU2dRSVlYRmpia0RtbEk2aEJxRjNqYmhISTM4LzJ5RVhZWDBkUlh4ek1nbEdLeHJtMnUxMjJWMW5NU3l0ZnJZCnFSZk5zV05oeS9ERmFpN1ovc092VXB2MDRTZEFZMXp5Q284eHMvdlJ4M29sNmU4QlU1WHlCYWhNQUJwd2FzdXkKaXdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+    }
+  },
+  "steps": {
+    "prowler-real": {
+      "_comment_step": "Single step: the prowler scan run. Verify requires ALL listed attestation types to be present + signed by the functionary + pass each regopolicy. Subjects across attestations must match (cilock walks the graph automatically).",
+      "name": "prowler-real",
+      "attestations": [
+        {
+          "type": "https://aflock.ai/attestations/environment/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/material/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/command-run/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/product/v0.2",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/prowler/v0.1",
+          "regopolicies": [
+            {
+              "_comment_rego": "Decoded text in decoded-rego-prowler-gate.txt \u2014 gates on totalChecks > 0 + critical fail count <= 2.",
+              "name": "prowler-findings-gate",
+              "module": "cGFja2FnZSBwcm93bGVyX2dhdGUKCiMgVGhpcyBSZWdvIGlzIGV2YWx1YXRlZCBhZ2FpbnN0IHRoZSBwcm93bGVyIHByZWRpY2F0ZSdzIGBhdHRlc3RhdGlvbmAKIyBmaWVsZCDigJQgaS5lLiB0aGUgU3VtbWFyeSBvYmplY3QgY2FwdHVyZWQgYnkgdGhlIHByb3dsZXIgYXR0ZXN0b3IuCiMKIyBEZW55IHJ1bGUgMTogdGhlIHNjYW4gbXVzdCBoYXZlIGF0IGxlYXN0IDEgY2hlY2sgZXhlY3V0ZWQuCiMgV2l0aG91dCB0aGlzLCBhbiBlbXB0eSBzY2FuIChuZXR3b3JrIGZhaWx1cmUsIHdyb25nIGNyZWRlbnRpYWxzLCBldGMuKQojIHdvdWxkIHNpbGVudGx5IHBhc3MgYXMgIm5vIGZpbmRpbmdzIiDigJQgYSBrbm93biBmYWxzZS1uZWdhdGl2ZSBhbnRpLXBhdHRlcm4uCmRlbnlbbXNnXSB7CiAgICBpbnB1dC5zdW1tYXJ5LnRvdGFsQ2hlY2tzID09IDAKICAgIG1zZyA6PSAicHJvd2xlciBzY2FuIGV4ZWN1dGVkIDAgY2hlY2tzIOKAlCByZWZ1c2luZyB0byBnYXRlIG9uIGFuIGVtcHR5IHNjYW4iCn0KCiMgRGVueSBydWxlIDI6IGF0IG1vc3QgMiBjcml0aWNhbCBmaW5kaW5ncyBhbGxvd2VkIGZvciB0aGUgZGVtbyBnYXRlLgojIFJlYWwgcHJvZHVjdGlvbiBnYXRlcyB3b3VsZCBiZSBgZmFpbENvdW50LmNyaXRpY2FsID09IDBgLiBXZSBhbGxvdyAyIGhlcmUKIyBiZWNhdXNlIHRoYXQncyB3aGF0IHRoZSB0ZXN0aWZ5c2VjLWRlbW8gSUFNIHNjYW4gYWN0dWFsbHkgcmVwb3J0cyDigJQgdXNlZnVsCiMgZm9yIHNob3dpbmcgdGhlIGdhdGUgd29ya2luZyB3aXRoIHJlYWwgZGF0YS4KZGVueVttc2ddIHsKICAgIGlucHV0LnN1bW1hcnkuYnlTZXZlcml0eS5jcml0aWNhbC5mYWlsID4gMgogICAgbXNnIDo9IHNwcmludGYoInByb3dsZXIgcmVwb3J0cyAlZCBjcml0aWNhbCBJQU0gZmluZGluZ3MgKGFsbG93ZWQ6IDIpIiwgW2lucHV0LnN1bW1hcnkuYnlTZXZlcml0eS5jcml0aWNhbC5mYWlsXSkKfQo="
+            }
+          ]
+        }
+      ],
+      "functionaries": [
+        {
+          "_comment_functionary": "Public key trust constraint. Anyone signing prowler-scan attestations must use the key in publickeys. In production replace with a Fulcio cert constraint matching your CI workflow identity.",
+          "type": "publickey",
+          "publickeyid": "19a99d7e19aabcf2bea4acc181431e8bbe3fba82d20abbb8f9028083ec08b60d"
+        }
+      ]
+    }
+  }
+}

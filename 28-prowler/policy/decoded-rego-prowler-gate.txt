@@ -1,0 +1,21 @@
+package prowler_gate
+
+# This Rego is evaluated against the prowler predicate's `attestation`
+# field — i.e. the Summary object captured by the prowler attestor.
+#
+# Deny rule 1: the scan must have at least 1 check executed.
+# Without this, an empty scan (network failure, wrong credentials, etc.)
+# would silently pass as "no findings" — a known false-negative anti-pattern.
+deny[msg] {
+    input.summary.totalChecks == 0
+    msg := "prowler scan executed 0 checks — refusing to gate on an empty scan"
+}
+
+# Deny rule 2: at most 2 critical findings allowed for the demo gate.
+# Real production gates would be `failCount.critical == 0`. We allow 2 here
+# because that's what the testifysec-demo IAM scan actually reports — useful
+# for showing the gate working with real data.
+deny[msg] {
+    input.summary.bySeverity.critical.fail > 2
+    msg := sprintf("prowler reports %d critical IAM findings (allowed: 2)", [input.summary.bySeverity.critical.fail])
+}

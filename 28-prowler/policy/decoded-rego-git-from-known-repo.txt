@@ -1,0 +1,12 @@
+package git_from_known_repo
+
+# Asserts the cilock run was launched from a known repo working tree.
+# In production this prevents accidentally running cilock against a clone
+# of an untrusted fork and binding their identity to the resulting envelope.
+#
+# Here we just require *some* git context — the demo's prowler envelope
+# was captured from a real rookery checkout, so this fires green.
+deny[msg] {
+    not input.commithash
+    msg := "git attestation has no commithash — cilock run was not from a git checkout"
+}
