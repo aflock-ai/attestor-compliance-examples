@@ -1,0 +1,10 @@
+package no_error_sarif_findings
+
+import future.keywords.in
+
+deny[msg] {
+    some run in input.report.runs
+    some result in run.results
+    result.level == "error"
+    msg := sprintf("SARIF result with level=error: %s in tool %v", [result.ruleId, run.tool.driver.name])
+}

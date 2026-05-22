@@ -1,0 +1,18 @@
+package sbom_required_fields
+
+deny[msg] {
+    input._sbomFormat == ""
+    msg := "SBOM is neither CycloneDX nor SPDX shape — discriminator missing"
+}
+
+deny[msg] {
+    input._sbomFormat == "cyclonedx"
+    count(input.components) == 0
+    msg := "CycloneDX SBOM has zero components"
+}
+
+deny[msg] {
+    input._sbomFormat == "spdx"
+    count(input.packages) == 0
+    msg := "SPDX SBOM has zero packages"
+}
