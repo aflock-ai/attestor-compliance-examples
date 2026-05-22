@@ -1,0 +1,44 @@
+name: fulcio-keyless
+
+# Demonstrates keyless signing via Sigstore Fulcio. The CI workflow's OIDC
+# token is exchanged for a short-lived signing cert; the attestation is
+# signed by that cert and the cert is verified back to a Fulcio root.
+# No long-lived secret stored anywhere.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fulcio-keyless.yml'
+      - 'signer-examples/fulcio-keyless/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required for GH OIDC -> Fulcio cert exchange
+
+jobs:
+  fulcio-signed-attestation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.0.0
+
+      - uses: aflock-ai/cilock-action@1785817ce72739e4c79cae918358a72b9ade672b # v1.0.1
+        with:
+          step: fulcio-signed-validation
+          # No --signer-file-key-path. Instead: --enable-sigstore + the Fulcio URL.
+          enable-sigstore: "true"
+          enable-archivista: "false"
+          fulcio-url: "https://fulcio.sigstore.dev"
+          fulcio-oidc-client-id: "sigstore"
+          fulcio-oidc-issuer: "https://token.actions.githubusercontent.com"
+          timestamp-servers: "https://timestamp.sigstore.dev/api/v1/timestamp"
+          attestations: "environment,git,github,github-action"
+          outfile: fulcio-keyless-attestation.json
+          command: echo "Fulcio keyless attestation signed without any long-lived key"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fulcio-keyless-attestation
+          path: fulcio-keyless-attestation.json
+          retention-days: 30
