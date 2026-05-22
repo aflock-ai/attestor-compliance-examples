@@ -1,0 +1,5 @@
+# Test keys regenerated per-run. Never commit RSA private keys.
+signing.key
+*.pem
+*.key
+real-scan/
