@@ -38,11 +38,13 @@ Crucially: `github.projecturl` hashes to the **same value** as `git.remote` when
 
 | Subject name | Identifies |
 |---|---|
-| `https://aflock.ai/attestations/material/v0.1/tree:materials` | the file-tree state before the wrapped command (combined digest) |
-| `https://aflock.ai/attestations/product/v0.2/tree:products` | the file-tree state after the wrapped command |
-| `file:<path>` | each individual file written | sha256 of the file bytes |
+| `https://aflock.ai/attestations/material/v0.3/tree:materials` | the RFC 6962 Merkle root over the file-tree state **before** the wrapped command (`H(0x00 \|\| sha256(path \|\| 0x00 \|\| file-digest))` leaves, sorted lex by path) |
+| `https://aflock.ai/attestations/product/v0.3/tree:products` | the RFC 6962 Merkle root over the file-tree state **after** the wrapped command |
+| `file:<path>` (via `inclusion-proof` attestation) | a specific file's identity, emitted on-demand by `cilock prove` against the producer's tree sidecar; the inclusion-proof predicate carries `leafPath` + `fileDigest` + `auditPath` so the verifier reconstructs the leaf hash and confirms inclusion against the signed tree root |
 
-The `tree:products` digest is the canonical artifact identity — passing it to `cilock verify --subjects sha256:<digest>` walks every collection that recorded that artifact.
+The `tree:products` digest is the canonical artifact identity — passing it to `cilock verify --subjects sha256:<digest>` walks every collection that recorded that artifact. To verify a *specific* file inside the tree, the producer must additionally have emitted an inclusion-proof attestation for that file via `cilock prove --tree-sidecar <outfile>.product.tree.json --file <path>`. See [verify a specific file](https://cilock.aflock.ai/guides/verify-a-specific-file) in the docs site for the full verifier flow.
+
+> **v0.1 / v0.2 status.** v0.1 product and material envelopes pre-dating the cutover are still readable via the verify-only `LegacyDecoder` in `plugins/attestors/{product,material}/legacy.go`. v0.2 product envelopes are **not** decoded — that URI resolves to `V02Unsupported`, whose every method returns `ErrV02Unsupported`. v0.2 envelopes must be re-issued under v0.3 before they will verify against any current cilock build.
 
 ### `prowler` attestor
 

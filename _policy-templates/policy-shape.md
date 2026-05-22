@@ -123,14 +123,14 @@ Example:
     "attestations": [
       { "type": "https://aflock.ai/attestations/git/v0.1", "regopolicies": [...] },
       { "type": "https://aflock.ai/attestations/github/v0.1", "regopolicies": [...] },
-      { "type": "https://aflock.ai/attestations/product/v0.2", "regopolicies": [] }
+      { "type": "https://aflock.ai/attestations/product/v0.3", "regopolicies": [] }
     ],
     "functionaries": [...]
   },
   "scan": {
     "attestations": [
       { "type": "https://aflock.ai/attestations/prowler/v0.1", "regopolicies": [...] },
-      { "type": "https://aflock.ai/attestations/product/v0.2", "regopolicies": [] }
+      { "type": "https://aflock.ai/attestations/product/v0.3", "regopolicies": [] }
     ],
     "functionaries": [...]
   }
