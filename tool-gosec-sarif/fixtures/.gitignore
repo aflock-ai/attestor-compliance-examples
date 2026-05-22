@@ -1,0 +1,4 @@
+# Artifacts produced by the validated `cilock run` invocation.
+attestation.json
+attestation.*.tree.json
+gosec.sarif
