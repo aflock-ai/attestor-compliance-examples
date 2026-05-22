@@ -1,0 +1,44 @@
+{
+  "_comment": "Multi-step verification policy for an envelope signed by AWS KMS. Functionary keyed by the KMS URL; pub key fetched once via aws kms get-public-key. Real signing requires kms:Sign IAM grant. CloudTrail records every Sign call for audit.",
+  "expires": "2027-12-31T23:59:59Z",
+  "name": "aws-kms-validation-v1",
+  "roots": {},
+  "publickeys": {
+    "awskms:///alias/cilock-validation-signer": {
+      "_comment": "AWS KMS key alias/cilock-validation-signer (RSA_2048) in testifysec-demo us-east-1. Public PEM fetched via aws kms get-public-key.",
+      "keyid": "awskms:///alias/cilock-validation-signer",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF5WTdhMFlOMFJXT2VYbHJCYk44OAp5WkpObkRSb1ZFTXlkRGxvOG5GNVlpMlNSWWUwVlVJQ3M4bjJwenlocE9zUzRFV1dXTjRTOUlBemNZbHI4Q2loCk1Tamt6ZmZySDBSY0ZRY281WER5bGpuWHBQQzEzY2hORGNwdU43Q2xGdGZzbUZvMHNHSS8rUytneGNiTUVpMkwKekRMRjhBc2dzczA2bGpWS1FDTnNDcFVLVkhkempaU1c5d1ZzOHduU1o2YkI4ckg4cnFSS3FibndIandicGFpLwp1Vlc2UjdUcjVVK0t5M1NZb1BLY3MySnk3cGkwWHpISkpHajRXVzZoZlBIUGdzMTl1N3Jrai9UaUNvblZyY2p2ClIvMEZoaHNLSThnSEZ1TGJ0NTJVQ1ExZjQ1VmVXQWY1YndpUXlOeDArMVh4cjhZYWFHR0RnZXNwYzI0V00yVDcKTXdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+    }
+  },
+  "steps": {
+    "kms-demo": {
+      "_comment_step": "Demo step. Functionary is the KMS key; anyone with kms:Sign on this key can produce a satisfying envelope. CloudTrail correlation is the out-of-band audit layer.",
+      "name": "kms-demo",
+      "attestations": [
+        {
+          "type": "https://aflock.ai/attestations/environment/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/material/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/command-run/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/product/v0.2",
+          "regopolicies": []
+        }
+      ],
+      "functionaries": [
+        {
+          "_comment_functionary": "AWS KMS-backed functionary. Replace with your own key URL + PEM. In production also enforce CloudTrail correlation.",
+          "type": "publickey",
+          "publickeyid": "awskms:///alias/cilock-validation-signer"
+        }
+      ]
+    }
+  }
+}
