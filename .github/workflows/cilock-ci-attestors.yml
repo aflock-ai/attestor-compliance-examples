@@ -10,10 +10,10 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # required for OIDC -> github+githubaction attestor data
+  id-token: write   # required for OIDC -> github+github-action attestor data
 
 jobs:
-  attest-github-and-githubaction:
+  attest-github-and-github-action:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v5.0.0
@@ -25,13 +25,13 @@ jobs:
       - name: write throwaway signer key
         run: |
           openssl genrsa -out key.pem 2048
-      - name: run cilock with github + githubaction attestors (real OIDC + env)
+      - name: run cilock with github + github-action attestors (real OIDC + env)
         run: |
           ./cilock run \
             --step github-actions-validation \
             --signer-file-key-path key.pem \
             --outfile attestation.json \
-            --attestations environment,git,github,githubaction \
+            --attestations environment,git,github,github-action \
             -- echo "real GH Actions run id $GITHUB_RUN_ID"
       - name: extract + post-process attestation
         run: |
@@ -43,8 +43,8 @@ jobs:
               t = p['type']
               if 'github' in t and 'webhook' not in t and 'action' not in t:
                   open('predicate-github.json','w').write(json.dumps(p, indent=2))
-              if 'githubaction' in t:
-                  open('predicate-githubaction.json','w').write(json.dumps(p, indent=2))
+              if 'github-action' in t:
+                  open('predicate-github-action.json','w').write(json.dumps(p, indent=2))
           print('extracted:', sorted([p['type'] for p in payload['predicate']['attestations']]))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -53,5 +53,5 @@ jobs:
           path: |
             attestation.json
             predicate-github.json
-            predicate-githubaction.json
+            predicate-github-action.json
           retention-days: 30
