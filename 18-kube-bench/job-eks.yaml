@@ -1,0 +1,50 @@
+---
+# kube-bench EKS Job — adapted from upstream:
+#   https://github.com/aquasecurity/kube-bench/blob/13c5a2bed634b4f324ad54ba2942f4a77fc802e0/job-eks.yaml
+#
+# Local changes vs upstream:
+#   - namespace pinned to kube-bench-cilock-demo
+#   - container image pinned to docker.io/aquasec/kube-bench:v0.15.5 (no :latest)
+#   - command appends `--json` so we get machine-parseable output for downstream gating
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench
+  namespace: kube-bench-cilock-demo
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      hostPID: true
+      containers:
+        - name: kube-bench
+          image: docker.io/aquasec/kube-bench:v0.15.5
+          command:
+            - kube-bench
+            - run
+            - --targets
+            - node,policies,managedservices,controlplane
+            - --benchmark
+            - eks-1.5.0
+            - --json
+          volumeMounts:
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: var-lib-kubelet
+          hostPath:
+            path: "/var/lib/kubelet"
+        - name: etc-systemd
+          hostPath:
+            path: "/etc/systemd"
+        - name: etc-kubernetes
+          hostPath:
+            path: "/etc/kubernetes"
