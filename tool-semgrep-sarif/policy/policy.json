@@ -1,0 +1,53 @@
+{
+  "_comment": "Multi-step verification policy for semgrep. Asserts env+material+command-run+product+sarif present, signed by the trusted key, and no SARIF level=error findings.",
+  "expires": "2027-12-31T23:59:59Z",
+  "name": "tool-semgrep-validation-v1",
+  "roots": {},
+  "publickeys": {
+    "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59": {
+      "_comment": "Signer of the envelope. Replace with Fulcio cert constraint in production.",
+      "keyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF0emk1OE5QS0tiS3ExaDdJbktqLwpiSHA1WmZLa0FJSzVibmtOOW0zdVF2MFIweFcyU21nd29WdVpEbzJKTUk0R0pQZkRMS04rWDZWR01IU3A0MmFQCjAzcEo4dU1SSHhzOFhFUVpuV2FuZTd4OEczM3JQK0t0SzQ0dlFCOUVIUjBKM1Y0eVFQUllIVDI2cGVISnpOY0kKemxhQURZWUJSdE8xQUlRQXhJMmdJZU1NMFNWTHVrWFB3TTFMMXRYKy9GSU0xTEh1YUtFU1JCZlhWQldrdk9ybgpLUDdyK0YyOFQycGMzcjVRbDdEcHBIdjBMYmVVTy9ndHc0Z3p1RlVydFJaWHZBMGxraHBUZHg4ZkxiQXJXV0k0ClBSVlNIVDlKNllHQlBCUGg5TnBCUHNGeDRYUzArcWlhUkprOFFnTmhJeUJEaUVaK1ludTNSMDBuSXVNTWFhUWwKRFFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+    }
+  },
+  "steps": {
+    "tool-semgrep": {
+      "_comment_step": "Single step: the semgrep scan run.",
+      "name": "tool-semgrep",
+      "attestations": [
+        {
+          "type": "https://aflock.ai/attestations/environment/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/material/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/command-run/v0.1",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/product/v0.2",
+          "regopolicies": []
+        },
+        {
+          "type": "https://aflock.ai/attestations/sarif/v0.1",
+          "regopolicies": [
+            {
+              "_comment_rego": "See decoded-rego-sarif-findings-gate.txt",
+              "name": "semgrep-findings-acceptable",
+              "module": "cGFja2FnZSBub19lcnJvcl9zYXJpZl9maW5kaW5ncwoKaW1wb3J0IGZ1dHVyZS5rZXl3b3Jkcy5pbgoKZGVueVttc2ddIHsKICAgIHNvbWUgcnVuIGluIGlucHV0LnJlcG9ydC5ydW5zCiAgICBzb21lIHJlc3VsdCBpbiBydW4ucmVzdWx0cwogICAgcmVzdWx0LmxldmVsID09ICJlcnJvciIKICAgIG1zZyA6PSBzcHJpbnRmKCJTQVJJRiByZXN1bHQgd2l0aCBsZXZlbD1lcnJvcjogJXMgaW4gdG9vbCAldiIsIFtyZXN1bHQucnVsZUlkLCBydW4udG9vbC5kcml2ZXIubmFtZV0pCn0K"
+            }
+          ]
+        }
+      ],
+      "functionaries": [
+        {
+          "type": "publickey",
+          "publickeyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59"
+        }
+      ]
+    }
+  }
+}
