@@ -1,94 +1,151 @@
-# `attestationsFrom` — cross-step policy example
+# `attestationsFrom` — real worked pipeline using the v0.3 BackRef graph + inclusion-proof
 
-**Status:** scaffolded (policy compiles; envelope capture pending v0.3 cilock release)
+**Status:** validated end-to-end against cilock dev. The verify in
+[`policy/expected-verify-output.txt`](./policy/expected-verify-output.txt) is
+copied verbatim from a successful run of [`verify-recipe.sh`](./verify-recipe.sh)
+on this branch.
 
-This example demonstrates the `attestationsFrom` field on a policy step — the cilock primitive for writing Rego rules that read attestations collected by an *earlier* step in the same policy evaluation.
+This is the first end-to-end demonstration of the cilock v0.3 BackRef graph
+spine. A four-step pipeline (build → scan-syft → scan-trivy → release) is
+recorded by four separate `cilock run` invocations; a per-file inclusion-proof
+emitted via `cilock prove` cryptographically pins the scanned binary to the
+build's product Merkle root; and the release step's Rego asserts the
+cross-step invariants over the lifted predicates.
 
-## What problem `attestationsFrom` solves
+> See the cilock-docs explanations of the underlying primitives:
+>
+> - [Concepts → The Spine of the Graph](https://cilock.aflock.ai/concepts/the-spine-of-the-graph)
+> - [Guides → Verify a Specific File](https://cilock.aflock.ai/guides/verify-a-specific-file)
 
-A single-step Rego block can only see attestations bound to its own step. That means a SARIF clean-bill-of-health check can't, by itself, also assert that the scanner ran against the artifact the producer is shipping — those two facts live in different steps' attestation collections.
+## Tree
 
-Before `attestationsFrom`, you had two unattractive options:
+```
+multi-step-attestationsFrom/
+├── README.md                          # this file
+├── build/
+│   ├── go.mod                         # one real dependency (google/uuid) so the
+│   ├── go.sum                         #   SBOM has a non-trivial component count
+│   └── main.go                        # tiny real Go program the build step compiles
+├── policy/
+│   ├── policy.json                    # the four-step policy with attestationsFrom + externalAttestations
+│   ├── rego/
+│   │   └── release-gate.rego          # plaintext copy of the Rego module
+│   │                                  #   (verify-recipe.sh base64-embeds this at run-time)
+│   └── expected-verify-output.txt     # captured cilock verify stdout from a passing run
+└── verify-recipe.sh                   # full reproduce script — generates keypair,
+                                       # runs all four cilock steps, prove, and verify
+```
 
-1. **Collapse everything into one step.** Lose the multi-functionary trust model (each step can pin a different signer) and lose the temporal ordering (build is necessarily earlier than scan).
-2. **Drop the cross-step check entirely.** Trust that whoever assembled the verify-time envelope set didn't swap a clean SARIF for a real artifact's findings.
+## The four-step contract
 
-`attestationsFrom: ["build", "scan"]` on a `release` step surfaces the build's and scan's attestations under `input.steps.build.<predicate-type>` and `input.steps.scan.<predicate-type>` when the release step's Rego evaluates. The release gate can then enforce the binding the other two options miss.
+| Step          | Wraps                                                                     | Emits                                                                                                                |
+| ------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `build`       | `go build -trimpath -o hello main.go`                                     | `material/v0.3`, `command-run/v0.1`, `product/v0.3` (and a sidecar tree JSON for `cilock prove`)                     |
+| `scan-syft`   | `syft hello -o cyclonedx-json=hello.cdx.json`                             | `material/v0.3`, `command-run/v0.1`, `product/v0.3`, `https://cyclonedx.org/bom` (CycloneDX SBOM embedded predicate) |
+| `scan-trivy`  | `trivy fs --quiet --format sarif --output hello.sarif.json hello`         | `material/v0.3`, `command-run/v0.1`, `product/v0.3`, `sarif/v0.1`                                                    |
+| `release`     | `echo 'release gate evaluated' > release.log` (no-op; provides the gate)  | `material/v0.3`, `command-run/v0.1`, `product/v0.3` — and verify-time `policyverify/v0.1` from the embedded Rego     |
 
-## The three-step contract this example demonstrates
+Out-of-band of any step, `cilock prove --tree-sidecar build.attestation.product.tree.json --file hello` emits a bare-predicate DSSE envelope of type `https://aflock.ai/attestations/inclusion-proof/v0.1` whose `treeRoot == build.product.merkleRoot` and whose `file:hello` subject matches the binary's content digest.
 
-| Step | Emits | Functionary pinned to |
-|---|---|---|
-| `build` | `material/v0.3` + `command-run/v0.1` + `product/v0.3` | the build pipeline's signer |
-| `scan` | `material/v0.3` + `command-run/v0.1` + `sarif/v0.1` + `inclusion-proof/v0.1` | the scanner pipeline's signer |
-| `release` | `policyverify/v0.1` (with `attestationsFrom: ["build", "scan"]`) | the release gate's signer |
+## How the v0.3 BackRef spine lines up
 
-The `release` step's Rego policy enforces two cross-step invariants:
+Each step's `cilock run` is invoked from a clean directory so the
+`material/v0.3` and `product/v0.3` Merkle roots are deterministic. The
+following equalities hold by construction (verified by inspection of the
+`*.tree.json` sidecars in a fresh run):
 
-1. **The scan ran against the artifact the build produced.** The scan step must include an inclusion-proof attestation whose `treeRoot` equals the build step's product Merkle root (`input.steps.build["...product/v0.3"].merkleRoot`). Without this, an attacker could attach a clean scan of a totally different artifact to the release.
+```
+build.product/v0.3.tree:products          == build's product Merkle root R
+scan-syft.material/v0.3.tree:materials    == R     (scan-syft consumed build's output as material)
+scan-trivy.material/v0.3.tree:materials   == R     (scan-trivy consumed build's output as material)
+inclusion-proof.treeRoot                  == R     (cilock prove builds against build's product tree sidecar)
+```
 
-2. **The scan found zero error-severity SARIF findings.** A straight Rego rule over `input.steps.scan["...sarif/v0.1"]`, expressible only because `attestationsFrom` lifted that predicate into the release step's `input.steps`.
+That single shared root is the BackRef graph spine. When `cilock verify -f
+build/hello` seeds the search with the binary's content digest, the BackRef
+expansion walks the shared root across collections and discovers every step's
+envelope without any explicit subject configuration beyond the explicit
+`--subjects artifact=sha256:<bin>` injection on the scan and release steps
+(which lets `-f` work as the single seed point).
 
-See `policy/policy.json` for the full policy and `policy/decoded-rego.txt` for the plain-text Rego module that's base64-embedded into the policy.
+## The release-step Rego
 
-## Other patterns `attestationsFrom` enables
+The release step declares:
 
-The general shape is: **a later step asserting an invariant over an earlier step's attestation contents.** Concrete patterns from the field:
+```jsonc
+"release": {
+  "attestationsFrom": ["build", "scan-syft", "scan-trivy"],
+  "externalFrom":     ["inclusionProof"],
+  "attestations": [{
+    "type": "https://aflock.ai/attestations/command-run/v0.1",
+    "regopolicies": [{"name": "release-gate", "module": "<base64 of policy/rego/release-gate.rego>"}]
+  }]
+}
+```
 
-- **"Same commit across build and scan."** The release step pulls both the build's `git` attestation and the scan's `git` attestation via `attestationsFrom`, asserts `input.steps.build["...git/v0.1"].commithash == input.steps.scan["...git/v0.1"].commithash`. Blocks the "scan an older clean tree, deploy newer dirty tree" attack.
+`attestationsFrom` lifts each named step's predicates into
+`input.steps.<step>.<predicateType>`. `externalFrom` lifts the inclusion-proof
+envelope (which is a bare-predicate DSSE, not a Collection — see
+`attestation/policy/step.go`) into `input.external.inclusionProof`.
 
-- **"VSA from a prior policy says pass."** A downstream stage (e.g. promote-to-prod) pulls a VSA emitted by an earlier policy verification step via `attestationsFrom: ["sandbox-gate"]`, asserts `input.steps["sandbox-gate"]["...policyverify/v0.1"].verificationResult == "PASSED"`. Chains policies temporally — you can require the sandbox gate passed before allowing the prod promotion.
+The full Rego is in [`policy/rego/release-gate.rego`](./policy/rego/release-gate.rego);
+the predicates it consumes:
 
-- **"Provenance of the SBOM."** Two-step pipeline: a `gen-sbom` step that emits the SBOM, and a `scan-sbom` step that runs grype against it. The scan step's release gate uses `attestationsFrom: ["gen-sbom"]` to assert the SBOM digest grype scanned matches the SBOM the producer published — closes the "we scanned a clean SBOM but published a dirty one" attack.
+- `input.steps.build["https://aflock.ai/attestations/product/v0.3"]` — for `merkleRoot`
+- `input.steps["scan-syft"]["https://cyclonedx.org/bom"]` — for `components`
+- `input.steps["scan-trivy"]["https://aflock.ai/attestations/sarif/v0.1"]` — for `report.runs[_].results[_].level`
+- `input.external.inclusionProof` — for `treeRoot`
 
-- **"Diff between two scans."** A `release` step pulls both an `attack-simulation` step's findings and a `clean-build` step's findings via `attestationsFrom: ["attack-simulation", "clean-build"]`. Asserts the symmetric difference is non-empty (the simulator actually detected the planted issue) AND that the clean-build set contains zero of the attack-simulation findings (the same patterns aren't legitimately present in a real build). Useful for validating that a detection ruleset is calibrated correctly — exactly the kind of check `43-trivy-attack-detection/` could grow into.
+And the three checks it enforces:
 
-- **"Workflow OIDC binding."** A `release` step asserts that the build's `github` attestation's `pipelineurl` claim matches a hardcoded production-workflow URL. Without `attestationsFrom`, the release step's Rego can't read the build's github predicate. With it, you can pin "release only runs after build-prod.yml" cryptographically.
+1. **Cross-step artifact identity binding.** `inclusion_proof.treeRoot == build_product.merkleRoot`. Without this check, an attacker who swapped the artifact between build and scan would still pass the gate.
+2. **SBOM is non-empty.** `count(scan_sbom.components) >= 1`.
+3. **No SARIF error-level findings.** `scan_sarif.report.runs[_].results[_].level != "error"`.
+
+## Reproduce
+
+The recipe is fully scripted in [`verify-recipe.sh`](./verify-recipe.sh) — it
+generates a fresh Ed25519 keypair, runs build/scan-syft/scan-trivy/prove/release,
+renders policy.json with the fresh keyid substituted, signs it, and runs
+`cilock verify`.
+
+```bash
+# From the example directory:
+./verify-recipe.sh --cilock=/path/to/cilock
+
+# Or with cilock on PATH:
+./verify-recipe.sh
+```
+
+Required tools: `cilock`, `go`, `syft`, `trivy`, `openssl`, `jq`, `base64`. On
+macOS: `brew install syft trivy jq`.
+
+Expected stdout for the final `cilock verify` invocation is committed at
+[`policy/expected-verify-output.txt`](./policy/expected-verify-output.txt). The
+only field that varies between runs is the kid suffix in the dsse-verify
+trace, which the committed reference masks as `kid=<ephemeral>`.
 
 ## What this example does NOT do
 
-It does not yet ship a captured envelope set. Producing one requires:
-
-1. A cilock binary built from rookery `main` after [rookery#136](https://github.com/aflock-ai/rookery/pull/136) merges (the v0.3 cutover).
-2. A real three-stage build/scan/release pipeline that emits the five attestation types in the contract above.
-3. The producer running `cilock prove --tree-sidecar <build>.product.tree.json --file <artifact>` to emit the inclusion-proof attestation the release step depends on.
-
-That capture is filed as a follow-up. Until then, this example documents the contract and the policy JSON; running `cilock verify` against it requires the captured envelopes.
-
-## Reproduce (sketch — pending real capture)
-
-```bash
-# 1. Build step
-cilock run --step build \
-  --signer-file-key-path key.pem --outfile build.attestation.json \
-  -- make dist/cilock
-
-# 2. Scan step. Scanner reads dist/cilock as a material; emits SARIF; cilock
-#    prove emits the inclusion-proof attestation binding the scan to build's
-#    product tree root.
-cilock run --step scan \
-  --signer-file-key-path key.pem --outfile scan.attestation.json \
-  --attestations sarif \
-  -- trivy fs --format sarif -o scan.sarif dist/cilock
-
-cilock prove \
-  --tree-sidecar build.attestation.product.tree.json \
-  --file dist/cilock \
-  --signer-file-key-path key.pem \
-  --outfile scan.inclusion-proof.json
-
-# 3. Verify release gate
-cilock sign -k key.pem -f policy/policy.json -o policy/policy-signed.json
-cilock verify \
-  -p policy/policy-signed.json \
-  -k key.pub \
-  -a build.attestation.json,scan.attestation.json,scan.inclusion-proof.json \
-  -s sha256:<dist-cilock-digest>
-```
+- It does not sign with a Fulcio cert or use OIDC functionaries. Each step's
+  functionary is a publickey constraint against a single Ed25519 keypair.
+  Production policies should pin per-step Fulcio cert constraints to match
+  each workflow's OIDC identity.
+- It does not exercise `artifactsFrom` (the v0.3 artifact-flow primitive that
+  asserts step N's materials match step N-1's products at the file level —
+  complementary to the BackRef spine asserted here).
+- The release step's `cilock run -- echo ...` is a no-op cheap placeholder. A
+  real release pipeline would publish artifacts (push image, upload archive,
+  cut a GitHub release) inside that step so the publish action itself is
+  attested.
 
 ## See also
 
-- [`_policy-templates/backref-subjects.md`](../_policy-templates/backref-subjects.md) — the subject-graph mental model `attestationsFrom` extends
-- [`_policy-templates/policy-shape.md`](../_policy-templates/policy-shape.md) — the policy.json field reference
-- [`43-trivy-attack-detection/`](../43-trivy-attack-detection) — a two-step policy that could use `attestationsFrom` to compare its two scans against each other
-- [Issue #135 on rookery](https://github.com/aflock-ai/rookery/issues/135) — the v0.3 design that makes inclusion-proof attestations the cross-step binding primitive
+- [`_policy-templates/backref-subjects.md`](../_policy-templates/backref-subjects.md)
+  — the subject-graph mental model this example builds on.
+- [`09-sbom/`](../09-sbom) — single-step SBOM example.
+- [`36-sarif/`](../36-sarif) — single-step SARIF example.
+- [`tool-syft-sbom/`](../tool-syft-sbom), [`tool-trivy-sarif/`](../tool-trivy-sarif)
+  — tool-integration examples this one composes.
+- [cilock-docs: spine of the graph](https://cilock.aflock.ai/concepts/the-spine-of-the-graph)
+- [cilock-docs: verify a specific file](https://cilock.aflock.ai/guides/verify-a-specific-file)
