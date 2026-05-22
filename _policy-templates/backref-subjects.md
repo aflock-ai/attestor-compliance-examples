@@ -125,6 +125,24 @@ secretscan → material tree:M, product tree:Sec
 
 Policy can require: `trivy.product.tree == grype.material.tree == syft.product.tree` (all scanners consumed the same artifact).
 
+## Cross-step rules via `attestationsFrom`
+
+Subject-digest overlap is what makes the verifier *find* the right collections. But the **rule** that enforces an overlap is something a single step's Rego block can't express — because a Rego block on step B can only see step B's own attestations. To assert "step B's findings reference step A's artifact," the policy engine must surface step A's attestations into step B's Rego context.
+
+That's what `attestationsFrom` does. Adding `"attestationsFrom": ["A"]` to step B's policy entry causes the policy engine to lift step A's verified attestations under `input.steps.A.<predicate-type>` when step B's Rego evaluates. The Rego module on step B can then reference both steps' data:
+
+```rego
+# step B's Rego, with attestationsFrom: ["A"]
+deny[msg] {
+    a_root := input.steps.A["https://aflock.ai/attestations/product/v0.3"].merkleRoot
+    b_root := input.steps.B["https://aflock.ai/attestations/material/v0.3"].merkleRoot
+    a_root != b_root
+    msg := "step B's materials don't include step A's product"
+}
+```
+
+See [`multi-step-attestationsFrom/`](../multi-step-attestationsFrom/) for a full worked example with a three-step build → scan → release policy. The release step's Rego asserts (a) the scan ran against the artifact the build produced (via an inclusion-proof attestation's `treeRoot` matching the build's product Merkle root), and (b) the scan's SARIF findings are clean — both invariants expressible only because `attestationsFrom: ["build", "scan"]` is on the release step.
+
 ## Why this matters
 
 A naïve verify is "have a signed attestation from a trusted signer." That stops crude attacks. Subject-digest layering blocks the more interesting attacks:
@@ -133,4 +151,4 @@ A naïve verify is "have a signed attestation from a trusted signer." That stops
 - A scanner output from a DIFFERENT commit ("we scanned main yesterday, releasing today's main") — caught when commithash subjects diverge.
 - A SBOM from a DIFFERENT image ("I'll attach a clean SBOM and ship the dirty image") — caught when the SBOM's tree digest doesn't appear as a subject in the image's collection.
 
-Subject digests are the cryptographic glue. The policy is the contract.
+Subject digests are the cryptographic glue. The policy is the contract. `attestationsFrom` is how the contract is written.
