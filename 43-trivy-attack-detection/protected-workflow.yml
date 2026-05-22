@@ -1,0 +1,687 @@
+# cilock detection validation: proves secretscan catches TeamPCP-style attacks
+# Fulcio OIDC + TSA for attestation signing, pre-signed policy for verification
+name: cilock Detection Validation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CILOCK_VERSION: v0.0.4-fix
+  FULCIO_URL: https://fulcio.sigstore.dev
+  FULCIO_OIDC_ISSUER: https://token.actions.githubusercontent.com
+  FULCIO_OIDC_CLIENT_ID: sigstore
+  TSA_URL: https://timestamp.sigstore.dev/api/v1/timestamp
+
+jobs:
+  # Job 1: Attack payload — secretscan BLOCKS the build
+  detect-attack:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Run attack payload (expect FAILURE)
+        id: attack
+        continue-on-error: true
+        run: |
+          cilock run \
+            --step attack-simulation \
+            --attestations secretscan \
+            --attestations git \
+            --attestations environment \
+            --attestor-secretscan-fail-on-detection \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile attack-attestation.json \
+            -- bash entrypoint.sh
+
+      - name: Verify build was blocked
+        run: |
+          if [ "${{ steps.attack.outcome }}" = "failure" ]; then
+            echo "## cilock BLOCKED the build" >> $GITHUB_STEP_SUMMARY
+            echo "secretscan detected credentials in pipeline output." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Show findings
+        if: always()
+        run: |
+          if [ -f attack-attestation.json ]; then
+            echo "## Findings" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json, base64
+          data = json.load(open('attack-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          for att in payload['predicate']['attestations']:
+              if 'secretscan' in att['type']:
+                  findings = att['attestation'].get('findings') or []
+                  print(json.dumps({'total': len(findings), 'findings': [{'rule': f['ruleId'], 'loc': f['location']} for f in findings]}, indent=2))
+          " >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload attestation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attack-attestation
+          path: attack-attestation.json
+          if-no-files-found: ignore
+
+  # Job 2: Covert attack with --trace — can ptrace detect file-based secret exfil?
+  trace-covert-attack:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Create covert attack script
+        run: |
+          cat > covert-attack.sh << 'SCRIPT'
+          #!/bin/bash
+          # Simulates REAL TeamPCP behavior: secrets go to FILES, not stdout.
+          # Keys generated at runtime to avoid GitHub push protection.
+
+          FAKE_PAT="ghp_$(openssl rand -hex 18)"
+          FAKE_AWS="AKIA$(openssl rand -hex 8 | tr '[:lower:]' '[:upper:]')"
+          FAKE_SECRET="$(openssl rand -base64 30)"
+
+          # Write harvested creds to file (covert — nothing to stdout)
+          cat > /tmp/runner_collected_$$.txt << CREDS
+          GITHUB_TOKEN=$FAKE_PAT
+          AWS_ACCESS_KEY_ID=$FAKE_AWS
+          AWS_SECRET_ACCESS_KEY=$FAKE_SECRET
+          CREDS
+
+          # Simulate reading /proc/mem (covert)
+          cat /proc/self/environ > /dev/null 2>&1
+
+          # Only innocent output to stdout
+          echo "Trivy scan running..."
+          echo "No vulnerabilities found."
+          SCRIPT
+          chmod +x covert-attack.sh
+
+      - name: Run covert attack WITH trace
+        id: trace-attack
+        continue-on-error: true
+        run: |
+          cilock run \
+            --step covert-attack-traced \
+            --attestations secretscan \
+            --attestations git \
+            --attestations environment \
+            --trace \
+            --attestor-secretscan-fail-on-detection \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile trace-attestation.json \
+            -- bash covert-attack.sh
+
+      - name: Analyze trace results
+        if: always()
+        run: |
+          echo "## Trace Analysis: Covert Attack" >> $GITHUB_STEP_SUMMARY
+          if [ -f trace-attestation.json ]; then
+            python3 -c "
+          import json, base64
+          data = json.load(open('trace-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+
+          for att in payload['predicate']['attestations']:
+              if 'command-run' in att['type']:
+                  cr = att['attestation']
+                  print('=== COMMAND RUN ===')
+                  print(f'Stdout: {cr.get(\"stdout\", \"\")[:200]}')
+                  procs = cr.get('processes', [])
+                  print(f'Processes traced: {len(procs)}')
+                  for p in procs:
+                      print(f'  PID {p.get(\"processid\")}: {p.get(\"program\", \"?\")}')
+                      opened = p.get('openedfiles', {})
+                      if opened:
+                          print(f'    Opened {len(opened)} files:')
+                          for path in sorted(opened.keys())[:20]:
+                              print(f'      {path}')
+                      environ = p.get('environ', '')
+                      if environ:
+                          print(f'    Environ captured: {len(environ)} bytes')
+                  print()
+
+              if 'secretscan' in att['type']:
+                  findings = att['attestation'].get('findings') or []
+                  print(f'=== SECRETSCAN: {len(findings)} findings ===')
+                  for f in findings:
+                      print(f'  {f[\"ruleId\"]}: {f.get(\"match\", \"?\")[:50]}')
+          " | tee -a $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.trace-attack.outcome }}" = "failure" ]; then
+            echo "**BUILD BLOCKED** — secretscan detected secrets even in covert (file-based) attack" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**BUILD PASSED** — secretscan did NOT detect the covert attack. Trace captured file data but secretscan may need the file contents, not just paths." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload trace attestation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trace-attestation
+          path: trace-attestation.json
+          if-no-files-found: ignore
+
+  # Job 3: Real action wrapping — validate github-action attestor schema
+  wrap-real-action:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use the REAL cilock-action to wrap another action
+      - name: Wrap actions/setup-node with cilock-action
+        id: wrap
+        uses: aflock-ai/cilock-action@v0.0.1-test
+        with:
+          step: wrapped-action-test
+          action-ref: actions/setup-node@v4
+          action-inputs: '{"node-version": "20"}'
+          attestations: github-action secretscan environment
+          enable-sigstore: true
+          fulcio-url: ${{ env.FULCIO_URL }}
+          fulcio-oidc-issuer: ${{ env.FULCIO_OIDC_ISSUER }}
+          fulcio-oidc-client-id: ${{ env.FULCIO_OIDC_CLIENT_ID }}
+          timestamp-servers: ${{ env.TSA_URL }}
+          enable-archivista: false
+          outfile: wrapped-action-attestation.json
+
+      - name: Dump github-action attestor output
+        if: always()
+        run: |
+          echo "## GitHub Action Attestor Schema" >> $GITHUB_STEP_SUMMARY
+          if [ -f wrapped-action-attestation.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json, base64
+          data = json.load(open('wrapped-action-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          for att in payload['predicate']['attestations']:
+              if 'github-action' in att['type']:
+                  print('TYPE:', att['type'])
+                  print(json.dumps(att['attestation'], indent=2))
+          " >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No attestation file produced" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Test OPA policy against real attestation
+        if: always()
+        run: |
+          if [ -f wrapped-action-attestation.json ]; then
+            # Extract the github-action attestation for OPA eval
+            python3 -c "
+          import json, base64
+          data = json.load(open('wrapped-action-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          for att in payload['predicate']['attestations']:
+              if 'github-action' in att['type']:
+                  json.dump(att['attestation'], open('github-action-data.json', 'w'), indent=2)
+                  print('Extracted github-action attestation')
+                  print('Fields:', list(att['attestation'].keys()))
+                  break
+          "
+            # Verify our OPA policy field names match
+            echo "## OPA Policy Validation" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          data = json.load(open('github-action-data.json'))
+          checks = [
+              ('actionref', 'actionref' in data),
+              ('refpinned', 'refpinned' in data),
+              ('actiontype', 'actiontype' in data),
+              ('actionname', 'actionname' in data),
+              ('exitcode', 'exitcode' in data),
+          ]
+          for field, exists in checks:
+              status = 'CONFIRMED' if exists else 'MISSING'
+              print(f'  {field}: {status} (value: {data.get(field, \"N/A\")})')
+          " | tee -a $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload attestation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wrapped-action-attestation
+          path: wrapped-action-attestation.json
+          if-no-files-found: ignore
+
+  # Job: Wrap REAL trivy-action with cilock-action — as close to actual attack scenario as possible
+  wrap-real-trivy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image for Trivy to scan
+        run: docker build -t example-api:test .
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      # Wrap the trivy CLI directly with cilock run. This is equivalent to
+      # what trivy-action does internally, but with full attestation capture.
+      # In a protected pipeline, this replaces the vulnerable trivy-action.
+      - name: Run Trivy scan wrapped with cilock
+        id: trivy-wrap
+        continue-on-error: true
+        run: |
+          cilock run \
+            --step trivy-scan \
+            --attestations secretscan \
+            --attestations environment \
+            --attestations git \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile trivy-wrapped-attestation.json \
+            -- trivy image --format sarif --output trivy-results.sarif --severity CRITICAL,HIGH example-api:test
+          attestations: github-action secretscan environment
+          enable-sigstore: true
+          fulcio-url: ${{ env.FULCIO_URL }}
+          fulcio-oidc-issuer: ${{ env.FULCIO_OIDC_ISSUER }}
+          fulcio-oidc-client-id: ${{ env.FULCIO_OIDC_CLIENT_ID }}
+          timestamp-servers: ${{ env.TSA_URL }}
+          enable-archivista: false
+          outfile: trivy-wrapped-attestation.json
+
+      - name: Analyze trivy-action attestation
+        if: always()
+        run: |
+          echo "## Real trivy-action Wrapped with cilock" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-wrapped-attestation.json ]; then
+            python3 -c "
+          import json, base64
+          data = json.load(open('trivy-wrapped-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          print(f'Step: {payload[\"predicate\"][\"name\"]}')
+          print(f'Attestation types:')
+          for att in payload['predicate']['attestations']:
+              print(f'  {att[\"type\"]}')
+              if 'github-action' in att['type']:
+                  ga = att['attestation']
+                  print(f'    actionref: {ga.get(\"actionref\", \"N/A\")}')
+                  print(f'    refpinned: {ga.get(\"refpinned\", \"N/A (omitted=false)\")}')
+                  print(f'    actiontype: {ga.get(\"actiontype\", \"N/A\")}')
+                  print(f'    exitcode: {ga.get(\"exitcode\", \"N/A\")}')
+              if 'secretscan' in att['type']:
+                  findings = att['attestation'].get('findings') or []
+                  print(f'    findings: {len(findings)}')
+          " | tee -a $GITHUB_STEP_SUMMARY
+          else
+            echo "No attestation file produced" | tee -a $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check SARIF output
+        if: always()
+        run: |
+          if [ -f trivy-results.sarif ]; then
+            echo "## Trivy SARIF Output" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
+          import json
+          data = json.load(open('trivy-results.sarif'))
+          runs = data.get('runs', [])
+          for run in runs:
+              results = run.get('results', [])
+              print(f'Trivy found {len(results)} vulnerabilities')
+              for r in results[:5]:
+                  print(f'  {r.get(\"ruleId\", \"?\")}: {r.get(\"message\", {}).get(\"text\", \"?\")[:80]}')
+          " | tee -a $GITHUB_STEP_SUMMARY
+          else
+            echo "No SARIF file produced" | tee -a $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload trivy attestation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-wrapped-attestation
+          path: trivy-wrapped-attestation.json
+          if-no-files-found: ignore
+
+      - name: Upload SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          if-no-files-found: ignore
+
+  # Job 3: Clean step — should PASS
+  clean-step:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Run clean step (should pass)
+        run: |
+          cilock run \
+            --step clean-build \
+            --attestations secretscan \
+            --attestations git \
+            --attestations environment \
+            --attestor-secretscan-fail-on-detection \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile clean-attestation.json \
+            -- echo "Hello from a clean build step. No secrets here."
+
+      - name: Confirm clean
+        run: |
+          echo "## Clean Step" >> $GITHUB_STEP_SUMMARY
+          python3 -c "
+          import json, base64
+          data = json.load(open('clean-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          for att in payload['predicate']['attestations']:
+              if 'secretscan' in att['type']:
+                  findings = att['attestation'].get('findings') or []
+                  print(f'Findings: {len(findings)} (expected: 0)')
+          " | tee -a $GITHUB_STEP_SUMMARY
+
+      - name: Upload attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: clean-attestation
+          path: clean-attestation.json
+
+  # Job 3: cilock verify with pre-signed policy
+  verify-policy:
+    needs: [clean-step]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Download clean attestation
+        uses: actions/download-artifact@v4
+        with:
+          name: clean-attestation
+
+      - name: Verify clean attestation against policy
+        id: verify
+        continue-on-error: true
+        run: |
+          echo "## Policy Verification" >> $GITHUB_STEP_SUMMARY
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Using commit SHA as subject: $COMMIT_SHA"
+          cilock verify \
+            -p policy-signed.json \
+            -a clean-attestation.json \
+            -s "sha1:$COMMIT_SHA" \
+            -k policy-pub.pem \
+            --enable-archivista=false \
+            --log-level debug 2>&1 | tee verify-output.txt
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat verify-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Attack blocked by secretscan | ${{ needs.detect-attack.result == 'success' && 'BLOCKED' || 'See logs' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Clean step passed | ${{ needs.clean-step.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Policy verification | ${{ steps.verify.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  # Job 6: Verify trace attestation with behavioral OPA policy
+  verify-trace-behavioral:
+    needs: [trace-covert-attack]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Download trace attestation
+        uses: actions/download-artifact@v4
+        with:
+          name: trace-attestation
+
+      - name: Sign trace behavioral policy with cilock
+        run: |
+          cilock sign \
+            -f policy-trace.json \
+            -o policy-trace-signed.json \
+            -k policy-key.pem
+
+      - name: Verify trace attestation against behavioral policy
+        id: verify-trace
+        continue-on-error: true
+        run: |
+          echo "## Trace Behavioral Policy Verification" >> $GITHUB_STEP_SUMMARY
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Using commit SHA as subject: $COMMIT_SHA"
+          cilock verify \
+            -p policy-trace-signed.json \
+            -a trace-attestation.json \
+            -s "sha1:$COMMIT_SHA" \
+            -k policy-pub.pem \
+            --enable-archivista=false \
+            --log-level debug 2>&1 | tee trace-verify-output.txt
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat trace-verify-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Trace behavioral results
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.verify-trace.outcome }}" = "failure" ]; then
+            echo "**BEHAVIORAL DETECTION WORKED** — OPA policy flagged suspicious file access patterns in trace data" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**BEHAVIORAL DETECTION DID NOT TRIGGER** — trace data did not match the OPA policy rules" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job: Verify source-restriction OPA policy against wrapped-action attestation
+  verify-source-policy:
+    needs: [wrap-real-action]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: Download wrapped-action attestation
+        uses: actions/download-artifact@v4
+        with:
+          name: wrapped-action-attestation
+
+      - name: Sign source-restriction policy
+        run: |
+          cilock sign \
+            -f policy-source.json \
+            -o policy-source-signed.json \
+            -k policy-key.pem
+
+      - name: Verify source-restriction policy (expect DENY — not SHA-pinned)
+        id: verify-source
+        continue-on-error: true
+        run: |
+          echo "## Source Restriction Policy Verification" >> $GITHUB_STEP_SUMMARY
+          echo "Expected: DENY because actions/setup-node@v4 is not SHA-pinned" >> $GITHUB_STEP_SUMMARY
+          # Extract the subject digest from the attestation
+          SUBJECT_DIGEST=$(python3 -c "
+          import json, base64
+          data = json.load(open('wrapped-action-attestation.json'))
+          payload = json.loads(base64.b64decode(data['payload']))
+          for s in payload.get('subject', []):
+              for algo, digest in s.get('digest', {}).items():
+                  print(f'{algo}:{digest}')
+                  break
+              break
+          ")
+          echo "Using subject: $SUBJECT_DIGEST"
+          cilock verify \
+            -p policy-source-signed.json \
+            -a wrapped-action-attestation.json \
+            -s "$SUBJECT_DIGEST" \
+            -k policy-pub.pem \
+            --enable-archivista=false \
+            --log-level debug 2>&1 | tee source-verify-output.txt
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat source-verify-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Source restriction results
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.verify-source.outcome }}" = "failure" ]; then
+            echo "**SOURCE RESTRICTION WORKED** — OPA policy denied unpinned action ref" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**UNEXPECTED PASS** — policy should have denied unpinned action ref" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Job 7: Performance benchmark — npm install WITHOUT trace
+  perf-no-trace:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: npm install WITHOUT trace
+        run: |
+          echo "## Performance: npm install WITHOUT trace" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s%N)
+          cilock run \
+            --step perf-no-trace \
+            --attestations secretscan \
+            --attestations environment \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile perf-no-trace.json \
+            -- npm install
+          END=$(date +%s%N)
+          ELAPSED=$(( (END - START) / 1000000 ))
+          echo "Total elapsed: ${ELAPSED}ms" | tee -a $GITHUB_STEP_SUMMARY
+
+  # Job 8: Performance benchmark — npm install WITH trace
+  perf-with-trace:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cilock
+        run: |
+          curl -sSfL https://github.com/aflock-ai/rookery/releases/download/${{ env.CILOCK_VERSION }}/cilock-${{ env.CILOCK_VERSION }}-linux-amd64.tar.gz -o cilock.tar.gz
+          tar xzf cilock.tar.gz
+          chmod +x cilock-linux-amd64
+          sudo mv cilock-linux-amd64 /usr/local/bin/cilock
+
+      - name: npm install WITH trace
+        run: |
+          echo "## Performance: npm install WITH trace" >> $GITHUB_STEP_SUMMARY
+          START=$(date +%s%N)
+          cilock run \
+            --step perf-with-trace \
+            --attestations secretscan \
+            --attestations environment \
+            --trace \
+            --signer-fulcio-url ${{ env.FULCIO_URL }} \
+            --signer-fulcio-oidc-issuer ${{ env.FULCIO_OIDC_ISSUER }} \
+            --signer-fulcio-oidc-client-id ${{ env.FULCIO_OIDC_CLIENT_ID }} \
+            --timestamp-servers ${{ env.TSA_URL }} \
+            --enable-archivista=false \
+            --outfile perf-with-trace.json \
+            -- npm install
+          END=$(date +%s%N)
+          ELAPSED=$(( (END - START) / 1000000 ))
+          echo "Total elapsed: ${ELAPSED}ms" | tee -a $GITHUB_STEP_SUMMARY

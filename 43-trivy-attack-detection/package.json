@@ -1,0 +1,12 @@
+{
+  "name": "example-api",
+  "version": "1.0.0",
+  "description": "Example API for cilock detection testing",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
