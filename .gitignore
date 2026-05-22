@@ -3,3 +3,4 @@ signing.key
 *.pem
 *.key
 real-scan/
+_validation/work/
