@@ -58,13 +58,13 @@
           "type": "https://aflock.ai/attestations/environment/v0.1"
         },
         {
-          "type": "https://aflock.ai/attestations/material/v0.1"
+          "type": "https://aflock.ai/attestations/material/v0.3"
         },
         {
           "type": "https://aflock.ai/attestations/secretscan/v0.1"
         },
         {
-          "type": "https://aflock.ai/attestations/product/v0.1"
+          "type": "https://aflock.ai/attestations/product/v0.3"
         }
       ]
     }

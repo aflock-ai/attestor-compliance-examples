@@ -109,11 +109,12 @@ Real Amazon Linux 2023 `rpm -qa` inventory from a t3.small EC2 instance. The att
     {
       "name": "perl-vars",
       "version": "1.05"
-    },
-    {
-      "name
-... (truncated)
+    }
+  ]
+}
 ```
+
+The excerpt above is the first ~15 entries from the captured RPM inventory; the full predicate (several hundred packages) is at `_validation/results/14-system-packages/system-packages.json`.
 
 ## What we found
 

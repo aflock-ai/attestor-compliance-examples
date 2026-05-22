@@ -1,0 +1,62 @@
+{
+  "_comment": "Multi-step release-gate policy demonstrating the attestationsFrom cross-step contract. Three steps — build, scan, release — where release.regopolicies pulls predicates from the earlier two steps via attestationsFrom. The release step asserts (a) the scan ran against the artifact the build produced (by checking the scan step has an inclusion-proof attestation whose treeRoot equals the build's product Merkle root), and (b) the scan found zero SARIF error-level findings. Neither check is expressible without attestationsFrom: a single-step Rego block can only see its own step's attestations.",
+  "expires": "2027-12-31T23:59:59Z",
+  "name": "multi-step-release-gate-v1",
+  "roots": {},
+  "publickeys": {
+    "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59": {
+      "_comment": "Shared example signer key. In production, replace with a Fulcio cert constraint matching the build / scan / release workflow OIDC identities (each step may pin a different identity).",
+      "keyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF0emk1OE5QS0tiS3ExaDdJbktqLwpiSHA1WmZLa0FJSzVibmtOOW0zdVF2MFIweFcyU21nd29WdVpEbzJKTUk0R0pQZkRMS04rWDZWR01IU3A0MmFQCjAzcEo4dU1SSHhzOFhFUVpuV2FuZTd4OEczM3JQK0t0SzQ0dlFCOUVIUjBKM1Y0eVFQUllIVDI2cGVISnpOY0kKemxhQURZWUJSdE8xQUlRQXhJMmdJZU1NMFNWTHVrWFB3TTFMMXRYKy9GSU0xTEh1YUtFU1JCZlhWQldrdk9ybgpLUDdyK0YyOFQycGMzcjVRbDdEcHBIdjBMYmVVTy9ndHc0Z3p1RlVydFJaWHZBMGxraHBUZHg4ZkxiQXJXV0k0ClBSVlNIVDlKNllHQlBCUGg5TnBCUHNGeDRYUzArcWlhUkprOFFnTmhJeUJEaUVaK1ludTNSMDBuSXVNTWFhUWwKRFFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+    }
+  },
+  "steps": {
+    "build": {
+      "_comment_step": "Stage 1 — build the artifact. cilock run wraps the build command and emits the v0.3 product + material attestations. The product attestation's tree:products subject (a Merkle root) is the canonical artifact identity that later steps' inclusion-proof attestations reference.",
+      "name": "build",
+      "attestations": [
+        { "type": "https://aflock.ai/attestations/environment/v0.1" },
+        { "type": "https://aflock.ai/attestations/git/v0.1" },
+        { "type": "https://aflock.ai/attestations/material/v0.3" },
+        { "type": "https://aflock.ai/attestations/command-run/v0.1" },
+        { "type": "https://aflock.ai/attestations/product/v0.3" }
+      ],
+      "functionaries": [
+        { "type": "publickey", "publickeyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59" }
+      ]
+    },
+    "scan": {
+      "_comment_step": "Stage 2 — scan the artifact. The scanner consumes the build's product (so the build's product Merkle root is one of the scan's material leaves) and emits a SARIF attestation plus an inclusion-proof attestation whose treeRoot equals the build's product tree root. The inclusion-proof attestation is what cryptographically binds the SARIF findings to a specific build's artifact identity.",
+      "name": "scan",
+      "attestations": [
+        { "type": "https://aflock.ai/attestations/environment/v0.1" },
+        { "type": "https://aflock.ai/attestations/material/v0.3" },
+        { "type": "https://aflock.ai/attestations/command-run/v0.1" },
+        { "type": "https://aflock.ai/attestations/sarif/v0.1" },
+        { "type": "https://aflock.ai/attestations/inclusion-proof/v0.1" }
+      ],
+      "functionaries": [
+        { "type": "publickey", "publickeyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59" }
+      ]
+    },
+    "release": {
+      "_comment_step": "Stage 3 — release gate. attestationsFrom: [\"build\", \"scan\"] tells the policy engine to surface attestations from those steps under input.steps.build.<type> and input.steps.scan.<type> when evaluating this step's regopolicies. The Rego module asserts the cross-step invariants: scan must prove inclusion against build's product root, and SARIF findings must be clean.",
+      "name": "release",
+      "attestationsFrom": ["build", "scan"],
+      "attestations": [
+        {
+          "type": "https://aflock.ai/attestations/policyverify/v0.1",
+          "regopolicies": [
+            {
+              "name": "scan-bound-to-build-and-clean",
+              "module": "cGFja2FnZSBjaWxvY2sudmVyaWZ5CgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQojIENoZWNrIDE6IGFydGlmYWN0IGlkZW50aXR5IG92ZXJsYXAuCiMKIyBUaGUgYnVpbGQgc3RlcCdzIHByb2R1Y3QgYXR0ZXN0YXRpb24ncyBzdWJqZWN0IGlzIGB0cmVlOnByb2R1Y3RzYCB3aXRoIGEKIyBNZXJrbGUgcm9vdC4gVGhlIHNjYW4gc3RlcCdzIG1hdGVyaWFsIGF0dGVzdGF0aW9uJ3Mgc3ViamVjdCBpcwojIGB0cmVlOm1hdGVyaWFsc2Ag4oCUIGFsc28gYSBNZXJrbGUgcm9vdCwgY29tcHV0ZWQgYXQgc2NhbiB0aW1lIG92ZXIgdGhlCiMgc2Nhbm5lcidzIGlucHV0cy4gSWYgdGhlIHNjYW5uZXIgY29uc3VtZWQgdGhlIGJ1aWxkJ3MgYXJ0aWZhY3QsIHRob3NlIHR3bwojIHJvb3RzIG92ZXJsYXAgKHRoZSBidWlsZCdzIHByb2R1Y3QgYmVjb21lcyBvbmUgb2YgdGhlIHNjYW4ncyBtYXRlcmlhbHMsCiMgYW5kIHRoZSBzY2FuJ3MgdHJlZTptYXRlcmlhbHMgTWVya2xlIHJvb3QgY29tbWl0cyB0byBpdCkuCiMKIyBXZSBlbmZvcmNlIHRoZSBzdHJvbmdlciBjaGVjayBhdmFpbGFibGUgZnJvbSBhIHJlbGVhc2UgZ2F0ZTogdGhlIHNjYW4ncwojIG1hdGVyaWFsIHRyZWUgbXVzdCBjb250YWluIHRoZSBidWlsZCdzIHByb2R1Y3Qgcm9vdCBhcyBvbmUgb2YgaXRzCiMgaW5jbHVzaW9uLXByb29mIGxlYXZlcy4gVGhlIHJlbGVhc2UgcGlwZWxpbmUgZW1pdHMgdGhhdCBpbmNsdXNpb24tcHJvb2YKIyBhdHRlc3RhdGlvbiBhcyBgcHJvdmVgIChub3Qgc2hvd24gaW4gdGhpcyBtaW5pbWFsIGV4YW1wbGUpOyB0aGUgY2hlY2sKIyBoZXJlIGFwcHJveGltYXRlcyBieSBhc3NlcnRpbmcgdGhhdCB0aGUgc2NhbidzIG1hdGVyaWFsIHRyZWUgcm9vdCBpcwojIGJvdW5kIHRvIHRoZSBidWlsZCdzIHByb2R1Y3Qgc3ViamVjdCBkaWdlc3QgdmlhIGFuIGluY2x1c2lvbiBwcm9vZiBpbgojIHRoZSBzY2FuJ3MgZXZpZGVuY2Ugc2V0LgojCiMgTWluaW1hbCBmb3JtICh0aGlzIGV4YW1wbGUpOiBhc3NlcnQgdGhlIHNjYW4gc3RlcCByZWNvcmRlZCB0aGUgYnVpbGQncwojIHByb2R1Y3QgYXMgYSBtYXRlcmlhbC4gVGhlIGJ1aWxkJ3MgcHJvZHVjdCB0cmVlIHJvb3QgbXVzdCBhcHBlYXIgYXMgdGhlCiMgc2NhbidzIG1hdGVyaWFsIHRyZWUgcm9vdCdzIHByZWRlY2Vzc29yIOKAlCBpLmUuIHRoZSBzY2FuIHN0ZXAgbGlzdHMgYW4KIyBpbmNsdXNpb24tcHJvb2YgYXR0ZXN0YXRpb24gd2hvc2UgdHJlZVJvb3QgZXF1YWxzIHRoZSBidWlsZCdzIHByb2R1Y3QKIyB0cmVlIHJvb3QuCiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCgpkZW55W21zZ10gewogICAgbm90IGJ1aWxkX3Byb2R1Y3Rfcm9vdAogICAgbXNnIDo9ICJyZWxlYXNlOiBidWlsZCBzdGVwIG11c3QgZW1pdCBhIHByb2R1Y3QgYXR0ZXN0YXRpb24iCn0KCmRlbnlbbXNnXSB7CiAgICBub3Qgc2Nhbl9pbmNsdXNpb25fcHJvb2ZzCiAgICBtc2cgOj0gInJlbGVhc2U6IHNjYW4gc3RlcCBtdXN0IGluY2x1ZGUgYXQgbGVhc3Qgb25lIGluY2x1c2lvbi1wcm9vZiBhdHRlc3RhdGlvbiBiaW5kaW5nIGl0IHRvIHRoZSBidWlsZCdzIHByb2R1Y3QgdHJlZSIKfQoKZGVueVttc2ddIHsKICAgIGJ1aWxkX3Byb2R1Y3Rfcm9vdAogICAgc2Nhbl9pbmNsdXNpb25fcHJvb2ZzCiAgICBub3Qgc2Nhbl9wcm92ZXNfYnVpbGRfcHJvZHVjdAogICAgbXNnIDo9IHNwcmludGYoCiAgICAgICAgInJlbGVhc2U6IHNjYW4gc3RlcCBoYXMgaW5jbHVzaW9uIHByb29mcyBidXQgbm9uZSBuYW1lcyB0aGUgYnVpbGQncyBwcm9kdWN0IHRyZWUgcm9vdCAldiIsCiAgICAgICAgW2J1aWxkX3Byb2R1Y3Rfcm9vdF0sCiAgICApCn0KCmJ1aWxkX3Byb2R1Y3Rfcm9vdCA6PSByb290IHsKICAgIHAgOj0gaW5wdXQuc3RlcHMuYnVpbGRbImh0dHBzOi8vYWZsb2NrLmFpL2F0dGVzdGF0aW9ucy9wcm9kdWN0L3YwLjMiXQogICAgcm9vdCA6PSBwLm1lcmtsZVJvb3QKfQoKc2Nhbl9pbmNsdXNpb25fcHJvb2ZzIDo9IHByb29mcyB7CiAgICBwcm9vZnMgOj0gW3AgfAogICAgICAgIHAgOj0gaW5wdXQuc3RlcHMuc2NhblsiaHR0cHM6Ly9hZmxvY2suYWkvYXR0ZXN0YXRpb25zL2luY2x1c2lvbi1wcm9vZi92MC4xIl0KICAgIF0KICAgIGNvdW50KHByb29mcykgPiAwCn0KCnNjYW5fcHJvdmVzX2J1aWxkX3Byb2R1Y3QgewogICAgcCA6PSBpbnB1dC5zdGVwcy5zY2FuWyJodHRwczovL2FmbG9jay5haS9hdHRlc3RhdGlvbnMvaW5jbHVzaW9uLXByb29mL3YwLjEiXQogICAgcC50cmVlUm9vdCA9PSBidWlsZF9wcm9kdWN0X3Jvb3QKfQoKIyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KIyBDaGVjayAyOiBzY2FuLXJlc3VsdCBjbGVhbiBiaWxsLgojCiMgVGhlIHNjYW4gc3RlcCdzIHNhcmlmIGF0dGVzdGF0aW9uIGNhcnJpZXMgdGhlIHRvb2wncyBmaW5kaW5ncy4gUmVsZWFzZQojIHJlZnVzZXMgdG8gc2hpcCBpZiBhbnkgZmluZGluZyBoYXMgbGV2ZWwgImVycm9yIiAoU0FSSUYncyBtb3N0LXNldmVyZQojIGJ1Y2tldCkuCiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCgpkZW55W21zZ10gewogICAgcyA6PSBpbnB1dC5zdGVwcy5zY2FuWyJodHRwczovL2FmbG9jay5haS9hdHRlc3RhdGlvbnMvc2FyaWYvdjAuMSJdCiAgICBmaW5kaW5nIDo9IHMucnVuc1tfXS5yZXN1bHRzW19dCiAgICBmaW5kaW5nLmxldmVsID09ICJlcnJvciIKICAgIG1zZyA6PSBzcHJpbnRmKAogICAgICAgICJyZWxlYXNlOiBzY2FuIHN0ZXAgaGFzIFNBUklGIGVycm9yLWxldmVsIGZpbmRpbmcgKCV2IGF0ICV2KTsgcmVsZWFzZSBibG9ja2VkIiwKICAgICAgICBbZmluZGluZy5ydWxlSWQsIGZpbmRpbmcubG9jYXRpb25zWzBdLnBoeXNpY2FsTG9jYXRpb24uYXJ0aWZhY3RMb2NhdGlvbi51cmldLAogICAgKQp9Cg=="
+            }
+          ]
+        }
+      ],
+      "functionaries": [
+        { "type": "publickey", "publickeyid": "11d36edf6b1693459d22494f1997415e7d63113b06fa8e54657a1fb178566f59" }
+      ]
+    }
+  }
+}

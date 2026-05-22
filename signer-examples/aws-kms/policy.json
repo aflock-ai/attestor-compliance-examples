@@ -20,7 +20,7 @@
           "regopolicies": []
         },
         {
-          "type": "https://aflock.ai/attestations/material/v0.1",
+          "type": "https://aflock.ai/attestations/material/v0.3",
           "regopolicies": []
         },
         {
@@ -28,7 +28,7 @@
           "regopolicies": []
         },
         {
-          "type": "https://aflock.ai/attestations/product/v0.2",
+          "type": "https://aflock.ai/attestations/product/v0.3",
           "regopolicies": []
         }
       ],

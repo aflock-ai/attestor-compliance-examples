@@ -38,11 +38,13 @@ Crucially: `github.projecturl` hashes to the **same value** as `git.remote` when
 
 | Subject name | Identifies |
 |---|---|
-| `https://aflock.ai/attestations/material/v0.1/tree:materials` | the file-tree state before the wrapped command (combined digest) |
-| `https://aflock.ai/attestations/product/v0.2/tree:products` | the file-tree state after the wrapped command |
-| `file:<path>` | each individual file written | sha256 of the file bytes |
+| `https://aflock.ai/attestations/material/v0.3/tree:materials` | the RFC 6962 Merkle root over the file-tree state **before** the wrapped command (`H(0x00 \|\| sha256(path \|\| 0x00 \|\| file-digest))` leaves, sorted lex by path) |
+| `https://aflock.ai/attestations/product/v0.3/tree:products` | the RFC 6962 Merkle root over the file-tree state **after** the wrapped command |
+| `file:<path>` (via `inclusion-proof` attestation) | a specific file's identity, emitted on-demand by `cilock prove` against the producer's tree sidecar; the inclusion-proof predicate carries `leafPath` + `fileDigest` + `auditPath` so the verifier reconstructs the leaf hash and confirms inclusion against the signed tree root |
 
-The `tree:products` digest is the canonical artifact identity — passing it to `cilock verify --subjects sha256:<digest>` walks every collection that recorded that artifact.
+The `tree:products` digest is the canonical artifact identity — passing it to `cilock verify --subjects sha256:<digest>` walks every collection that recorded that artifact. To verify a *specific* file inside the tree, the producer must additionally have emitted an inclusion-proof attestation for that file via `cilock prove --tree-sidecar <outfile>.product.tree.json --file <path>`. See [verify a specific file](https://cilock.aflock.ai/guides/verify-a-specific-file) in the docs site for the full verifier flow.
+
+> **v0.1 / v0.2 status.** v0.1 product and material envelopes pre-dating the cutover are still readable via the verify-only `LegacyDecoder` in `plugins/attestors/{product,material}/legacy.go`. v0.2 product envelopes are **not** decoded — that URI resolves to `V02Unsupported`, whose every method returns `ErrV02Unsupported`. v0.2 envelopes must be re-issued under v0.3 before they will verify against any current cilock build.
 
 ### `prowler` attestor
 
@@ -123,6 +125,24 @@ secretscan → material tree:M, product tree:Sec
 
 Policy can require: `trivy.product.tree == grype.material.tree == syft.product.tree` (all scanners consumed the same artifact).
 
+## Cross-step rules via `attestationsFrom`
+
+Subject-digest overlap is what makes the verifier *find* the right collections. But the **rule** that enforces an overlap is something a single step's Rego block can't express — because a Rego block on step B can only see step B's own attestations. To assert "step B's findings reference step A's artifact," the policy engine must surface step A's attestations into step B's Rego context.
+
+That's what `attestationsFrom` does. Adding `"attestationsFrom": ["A"]` to step B's policy entry causes the policy engine to lift step A's verified attestations under `input.steps.A.<predicate-type>` when step B's Rego evaluates. The Rego module on step B can then reference both steps' data:
+
+```rego
+# step B's Rego, with attestationsFrom: ["A"]
+deny[msg] {
+    a_root := input.steps.A["https://aflock.ai/attestations/product/v0.3"].merkleRoot
+    b_root := input.steps.B["https://aflock.ai/attestations/material/v0.3"].merkleRoot
+    a_root != b_root
+    msg := "step B's materials don't include step A's product"
+}
+```
+
+See [`multi-step-attestationsFrom/`](../multi-step-attestationsFrom/) for a full worked example with a three-step build → scan → release policy. The release step's Rego asserts (a) the scan ran against the artifact the build produced (via an inclusion-proof attestation's `treeRoot` matching the build's product Merkle root), and (b) the scan's SARIF findings are clean — both invariants expressible only because `attestationsFrom: ["build", "scan"]` is on the release step.
+
 ## Why this matters
 
 A naïve verify is "have a signed attestation from a trusted signer." That stops crude attacks. Subject-digest layering blocks the more interesting attacks:
@@ -131,4 +151,4 @@ A naïve verify is "have a signed attestation from a trusted signer." That stops
 - A scanner output from a DIFFERENT commit ("we scanned main yesterday, releasing today's main") — caught when commithash subjects diverge.
 - A SBOM from a DIFFERENT image ("I'll attach a clean SBOM and ship the dirty image") — caught when the SBOM's tree digest doesn't appear as a subject in the image's collection.
 
-Subject digests are the cryptographic glue. The policy is the contract.
+Subject digests are the cryptographic glue. The policy is the contract. `attestationsFrom` is how the contract is written.

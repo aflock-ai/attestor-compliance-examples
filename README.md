@@ -59,6 +59,13 @@ full reproduction + 3-layer detection of the March 2026 trivy-action
 tag-rewrite supply-chain attack, consolidated from the standalone
 `cilock-trivy-detection-test` repo.
 
+Plus [`multi-step-attestationsFrom/`](./multi-step-attestationsFrom/) —
+a build → scan → release-gate policy demonstrating the `attestationsFrom`
+cross-step contract. The release step's Rego pulls attestations from both
+earlier steps via `attestationsFrom: ["build", "scan"]` and enforces
+invariants that no single-step Rego block could express (the scanner ran
+against the artifact we're shipping, AND the scan was clean).
+
 ## Attestor coverage
 
 | # | Attestor | Category | Status | Real-data source | Example |
