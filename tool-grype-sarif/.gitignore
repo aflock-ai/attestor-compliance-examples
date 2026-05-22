@@ -1,0 +1,4 @@
+attestation.json
+grype.sarif
+*.product.tree.json
+*.material.tree.json
