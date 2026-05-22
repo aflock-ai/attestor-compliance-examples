@@ -58,6 +58,25 @@ doc-only by design. See per-attestor READMEs for the exact scenario.
 | 41 | `policyverify` | verify | doc-only | verify-time | [41-policyverify/](./41-policyverify/) |
 | 42 | `vsa` | verify | doc-only | verify-time | [42-vsa/](./42-vsa/) |
 
+## Supported tools (via existing attestors)
+
+In addition to per-attestor examples, this repo includes **tool integration examples** — validated end-to-end recipes for popular OSS tools that flow through rookery's `sarif`, `sbom`, or `secretscan` attestors today. No new attestor code required; the tool's existing structured output is captured byte-identically.
+
+| Tool | Category | Attestor | Example |
+|---|---|---|---|
+| [Trivy](https://github.com/aquasecurity/trivy) | container/IaC/secret scan | `sarif` (native attestor in dev — [#89](https://github.com/aflock-ai/rookery/issues/89)) | [tool-trivy-sarif/](./tool-trivy-sarif/) |
+| [Syft](https://github.com/anchore/syft) | SBOM generation | `sbom` | [tool-syft-sbom/](./tool-syft-sbom/) |
+| [Grype](https://github.com/anchore/grype) | vuln scan vs SBOM/image | `sarif` (native in dev — [#90](https://github.com/aflock-ai/rookery/issues/90)) | [tool-grype-sarif/](./tool-grype-sarif/) |
+| [Semgrep](https://github.com/semgrep/semgrep) | SAST | `sarif` (native in dev — [#92](https://github.com/aflock-ai/rookery/issues/92)) | [tool-semgrep-sarif/](./tool-semgrep-sarif/) |
+| [gosec](https://github.com/securego/gosec) | Go SAST | `sarif` | [tool-gosec-sarif/](./tool-gosec-sarif/) |
+| [Hadolint](https://github.com/hadolint/hadolint) | Dockerfile lint | `sarif` (native in dev — [#96](https://github.com/aflock-ai/rookery/issues/96)) | [tool-hadolint-sarif/](./tool-hadolint-sarif/) |
+| [Checkov](https://github.com/bridgecrewio/checkov) | IaC misconfig | `sarif` (native in dev — [#93](https://github.com/aflock-ai/rookery/issues/93)) | [tool-checkov-sarif/](./tool-checkov-sarif/) |
+| [Kubescape](https://github.com/kubescape/kubescape) | K8s framework posture | `sarif` (native in dev — [#94](https://github.com/aflock-ai/rookery/issues/94)) | [tool-kubescape-sarif/](./tool-kubescape-sarif/) |
+| [OSV-Scanner](https://github.com/google/osv-scanner) | OSV-schema vuln scan | `sarif` (native in dev — [#91](https://github.com/aflock-ai/rookery/issues/91)) | [tool-osv-scanner-sarif/](./tool-osv-scanner-sarif/) |
+| [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | Go reachable-vuln scan | `sarif` (native in dev — [#95](https://github.com/aflock-ai/rookery/issues/95)) | [tool-govulncheck-sarif/](./tool-govulncheck-sarif/) |
+
+See also [`CANDIDATE-ATTESTORS.md`](./CANDIDATE-ATTESTORS.md) for the full matrix of 35 tools researched as potential additions (17 proposed-new, 8 supported-via-existing, 4 not-supportable).
+
 ## Status legend
 
 - **validated**: cilock run against real infrastructure produced a real predicate captured in this repo
