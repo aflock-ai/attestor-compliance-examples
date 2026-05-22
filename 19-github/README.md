@@ -47,8 +47,12 @@ Real GitHub Actions OIDC token issued by `token.actions.githubusercontent.com` d
         "kty": "RSA",
         "kid": "38826b17-6a30-5f9b-b169-8beb8202f723",
         "alg": "RS256",
-        "n": "5Manmy-zwsk3wEftXNdKFZec4rSWENW4jTGevlvAcU9z3bgLBogQVvqYLtu9baVm2B3rfe5onadobq8po5UakJ0YsTiiEfXWdST7YI2Sdkvv-hOYMcZKYZ4dFvuSO1vQ2DgEkw
-... (truncated)
+        "n": "5Manmy-zwsk3wEftXNdKFZec4rSWENW4jTGevlvAcU9z3bgLBogQVvqYLtu9baVm2B3rfe5onadobq8po5UakJ0YsTiiEfXWdST7YI2Sdkvv-hOYMcZKYZ4dFvuSO1vQ2DgEkw … (256-byte RSA modulus elided for readability — full value at _validation/results/19-github/attestation.json)",
+        "e": "AQAB"
+      }
+    }
+  }
+}
 ```
 
 ## What we found

@@ -57,16 +57,17 @@ Real `pip install httpx` against PyPI on a Python 3.14 venv. The pip-install att
       "name": "httpcore",
       "version": "1.0.9",
       "location": "/private/tmp/attestor-compliance-examples/_validation/work/.venv/lib/python3.14/site-packages",
-      "requires": [
-        "certifi",
-        "h11"
-      ],
-      "requiredBy": [
-        "httpx"
-      ],
-      "homePage": "https://www.encode.io/httpcore
-... (truncated)
+      "requires": ["certifi", "h11"],
+      "requiredBy": ["httpx"],
+      "homePage": "https://www.encode.io/httpcore",
+      "author": "Tom Christie",
+      "license": "BSD"
+    }
+  ]
+}
 ```
+
+The excerpt above shows 5 of the 10 captured packages (`anyio`, `certifi`, `charset-normalizer`, `h11`, `httpcore`); the remaining 5 (`httpx`, `idna`, `pip`, `requests`, `urllib3`) follow the same shape and are present in the full predicate at `_validation/results/11-pip-install/pip.json`.
 
 ## What we found
 
