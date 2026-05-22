@@ -160,8 +160,8 @@ jq -r '.payload' attestation.json | base64 -d | jq '.predicate.attestations | ma
 # expected (order may vary):
 #   https://aflock.ai/attestations/command-run/v0.1
 #   https://aflock.ai/attestations/environment/v0.1
-#   https://aflock.ai/attestations/material/v0.1
-#   https://aflock.ai/attestations/product/v0.1
+#   https://aflock.ai/attestations/material/v0.3
+#   https://aflock.ai/attestations/product/v0.3
 #   https://aflock.ai/attestations/sarif/v0.1
 #   https://aflock.ai/attestations/git/v0.1
 ```
