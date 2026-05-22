@@ -1,15 +1,63 @@
 # Attestor Compliance Examples
 
 Real-data, end-to-end validation examples for every attestor in
-[`aflock-ai/rookery`](https://github.com/aflock-ai/rookery). Each example
-captures the **exact command + real predicate output** from running
-cilock against actual infrastructure — no synthetic fixtures unless
-the attestor's data source requires it (commercial scanner license,
-hard-coded sidecar bind-mount, etc.).
+[`aflock-ai/rookery`](https://github.com/aflock-ai/rookery), plus tool
+integration recipes and a multi-step policy framework. Every example is
+**validated through the full cycle**: run → sign → verify with a real
+policy. No synthetic fixtures unless the attestor's data source
+requires it (commercial scanner license, hard-coded sidecar bind-mount,
+etc.).
 
-**Status:** **26/42 validated against real infrastructure**, 5 pending VM
+## What you get per example
+
+```
+<NN>-<attestor>/
+├── README.md                     # what cilock adds + when to use it
+├── reproduce.sh                  # the validated cilock run invocation
+└── policy/
+    ├── policy.json               # multi-step verify policy (human-readable)
+    ├── policy-signed.json        # DSSE-signed via test key
+    ├── decoded-rego-*.txt        # plain-text Rego (LLM/reviewer friendly)
+    ├── verify-recipe.sh          # the validated cilock verify invocation
+    └── expected-verify-output.txt # captured PASS or DEMO-of-deny output
+```
+
+A PASS proves the multi-step contract holds. A documented DENY in
+`DEMO-NOTES.md` proves the gate caught a real finding — that's the value
+cilock adds over running the scanner standalone.
+
+## Multi-step policy framework
+
+The policy/ directory in each example asserts a contract across multiple
+attestation types: not just "have a signed envelope," but "the envelope
+contains env + material + command-run + product + tool attestations, all
+signed by the same trusted functionary, and the tool's findings pass
+Rego policies that gate on actual scan content."
+
+The shared infrastructure lives at [`_policy-templates/`](./_policy-templates/):
+
+- [`policy-shape.md`](./_policy-templates/policy-shape.md) — annotated walk-through of policy.json fields
+- [`backref-subjects.md`](./_policy-templates/backref-subjects.md) — how attestors layer via shared subject digests (the cross-attestation graph)
+- [`rego-snippets/`](./_policy-templates/rego-snippets/) — drop-in Rego policies for common gates
+- [`verify-recipe-template.sh`](./_policy-templates/verify-recipe-template.sh) — sign + verify flow template
+
+[`28-prowler/policy/`](./28-prowler/policy/) is the canonical exemplar.
+
+## Status
+
+**26/42 attestors validated against real infrastructure**, 5 pending VM
 batch completion, 6 blocked on external constraints, 5 verify-time or
 doc-only by design. See per-attestor READMEs for the exact scenario.
+
+**10 tool integrations** layered on top: Trivy, Syft, Grype, Semgrep, gosec,
+Hadolint, Checkov, Kubescape, OSV-Scanner, govulncheck. 5 fully validated
+(grype/syft/osv-scanner PASS; gosec/hadolint correctly DENY on real
+findings — the gate working). Remaining 5 in the VM batch backlog.
+
+Plus [`43-trivy-attack-detection/`](./43-trivy-attack-detection/) — the
+full reproduction + 3-layer detection of the March 2026 trivy-action
+tag-rewrite supply-chain attack, consolidated from the standalone
+`cilock-trivy-detection-test` repo.
 
 ## Attestor coverage
 
