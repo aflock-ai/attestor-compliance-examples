@@ -1,0 +1,57 @@
+level=info msg="Starting verify attestors stage..."
+level=info msg="Starting policyverify attestor..."
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+level=info msg="policy signature verified"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] processing 0 unverified envelopes for collection "build"
+[verified-source] processing 1 unverified envelopes for collection "scan-syft"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "scan-trivy"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "release"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "build"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "scan-syft"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "scan-trivy"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "release"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "build"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "scan-syft"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "scan-trivy"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+[verified-source] processing 1 unverified envelopes for collection "release"
+[dsse-verify] roots=0 intermediates=0 verifiers=1 timestampVerifiers=0 sigs=1
+[verified-source] envelope _validation/ verifier kid=<ephemeral> error=<nil>
+level=info msg="Finished policyverify attestor... (0.005864959s)"
+level=info msg="Completed verify attestors stage..."
+level=info msg="Verification succeeded"
+level=info msg="Evidence:"
+level=info msg="Step: build"
+level=info msg="0: _validation/work/out/build.attestation.json"
+level=info msg="1: _validation/work/out/build.attestation.json"
+level=info msg="Step: scan-syft"
+level=info msg="2: _validation/work/out/scan-syft.attestation.json"
+level=info msg="3: _validation/work/out/scan-syft.attestation.json"
+level=info msg="4: _validation/work/out/scan-syft.attestation.json"
+level=info msg="Step: scan-trivy"
+level=info msg="5: _validation/work/out/scan-trivy.attestation.json"
+level=info msg="6: _validation/work/out/scan-trivy.attestation.json"
+level=info msg="7: _validation/work/out/scan-trivy.attestation.json"
+level=info msg="Step: release"
+level=info msg="8: _validation/work/out/release.attestation.json"
+level=info msg="9: _validation/work/out/release.attestation.json"
