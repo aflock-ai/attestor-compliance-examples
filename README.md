@@ -132,6 +132,14 @@ In addition to per-attestor examples, this repo includes **tool integration exam
 
 See also [`CANDIDATE-ATTESTORS.md`](./CANDIDATE-ATTESTORS.md) for the full matrix of 35 tools researched as potential additions (17 proposed-new, 8 supported-via-existing, 4 not-supportable).
 
+## Cross-tool interop examples
+
+Validated workflows that exercise cilock alongside a *peer* signing or attestation tool — same DSSE wire format, different abstraction levels.
+
+| Demo | Peer tool | Wire format | What it proves | Example |
+|---|---|---|---|---|
+| cosign-signed DSSE as required external attestation | [cosign](https://github.com/sigstore/cosign) | DSSE / in-toto Statement (classic format) | A cilock policy can require a cosign-signed SLSA Provenance and verify its signature using the embedded cosign public key, with no envelope conversion | [interop-cosign-dsse/](./interop-cosign-dsse/) |
+
 ## Status legend
 
 - **validated**: cilock run against real infrastructure produced a real predicate captured in this repo

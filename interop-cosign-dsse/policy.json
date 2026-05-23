@@ -1,0 +1,33 @@
+{
+  "expires": "2030-01-01T00:00:00Z",
+  "publickeys": {
+    "051bd32bd5d4b0673074ebbbf4203eaf7d5880e3aaef36008673a795a0dd92df": {
+      "keyid": "051bd32bd5d4b0673074ebbbf4203eaf7d5880e3aaef36008673a795a0dd92df",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQVhWQ0hZR3kwcWV0YW5wNGVmQzI5bjgydkdKK3VyQnI0anNQNG55eTRvRzg9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo="
+    },
+    "11dc246ff7f0706ebf1ec345e8fd3ace55bf121d621052eecddfc549e9efc512": {
+      "keyid": "11dc246ff7f0706ebf1ec345e8fd3ace55bf121d621052eecddfc549e9efc512",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFeVNIYU5ObmozazNaUmJDTFNkenlyV3ZnRUFteQppcFFjc2hYUHp1dFNZR3RZS0loZlpxRVhwVVJHNlNqcUNJSjhVNldCbWplcWpETkpyeDRUam1mNE5RPT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="
+    }
+  },
+  "steps": {
+    "build": {
+      "name": "build",
+      "functionaries": [{"publickeyid": "051bd32bd5d4b0673074ebbbf4203eaf7d5880e3aaef36008673a795a0dd92df"}],
+      "attestations": [
+        {"type": "https://aflock.ai/attestations/environment/v0.1"},
+        {"type": "https://aflock.ai/attestations/material/v0.3"},
+        {"type": "https://aflock.ai/attestations/command-run/v0.1"},
+        {"type": "https://aflock.ai/attestations/product/v0.3"}
+      ]
+    }
+  },
+  "externalAttestations": {
+    "slsa-provenance-from-cosign": {
+      "name": "slsa-provenance-from-cosign",
+      "predicateType": "https://slsa.dev/provenance/v0.2",
+      "required": true,
+      "functionaries": [{"publickeyid": "11dc246ff7f0706ebf1ec345e8fd3ace55bf121d621052eecddfc549e9efc512"}]
+    }
+  }
+}
