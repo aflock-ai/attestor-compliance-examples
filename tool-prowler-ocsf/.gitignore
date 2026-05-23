@@ -1,0 +1,3 @@
+# Local working artifacts from reproduce.sh — do NOT exclude raw/.
+key.pem
+output/
