@@ -1,0 +1,28 @@
+---
+env:
+  contexts:
+    - name: target
+      urls:
+        - http://localhost:3000
+  parameters:
+    failOnError: false
+    progressToStdout: true
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+  - type: spider
+    parameters:
+      context: target
+      url: http://localhost:3000
+      maxDuration: 1
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 2
+  - type: report
+    parameters:
+      template: sarif-json
+      reportDir: /zap/wrk
+      reportFile: zap.sarif
+      reportTitle: ZAP Baseline against Juice Shop
