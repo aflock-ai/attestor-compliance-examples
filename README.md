@@ -119,6 +119,7 @@ In addition to per-attestor examples, this repo includes **tool integration exam
 
 | Tool | Category | Attestor | Example |
 |---|---|---|---|
+| [Linkerd](https://linkerd.io) | service mesh (CNCF graduated) | `linkerd-check` (native) | [tool-linkerd-check/](./tool-linkerd-check/) |
 | [Trivy](https://github.com/aquasecurity/trivy) | container/IaC/secret scan | `sarif` (native attestor in dev — [#89](https://github.com/aflock-ai/rookery/issues/89)) | [tool-trivy-sarif/](./tool-trivy-sarif/) |
 | [Syft](https://github.com/anchore/syft) | SBOM generation | `sbom` | [tool-syft-sbom/](./tool-syft-sbom/) |
 | [Grype](https://github.com/anchore/grype) | vuln scan vs SBOM/image | `sarif` (native in dev — [#90](https://github.com/aflock-ai/rookery/issues/90)) | [tool-grype-sarif/](./tool-grype-sarif/) |

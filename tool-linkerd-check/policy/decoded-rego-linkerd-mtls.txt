@@ -1,0 +1,54 @@
+package linkerd_mtls
+
+# This Rego is evaluated against the linkerd-check predicate's `attestation`
+# field — i.e. the Attestor struct emitted by the linkerd-check attestor.
+#
+# The contract: every meshed edge MUST be mTLS-secured. Any insecure edge
+# is a deploy-blocking finding. Linkerd auto-enrolls every meshed pod's
+# proxy in the trust anchor; an insecure edge means either (a) a workload
+# is unmeshed (no sidecar injection), (b) trust-anchor rotation is in
+# flight, or (c) someone bypassed the proxy. Each of those is something a
+# release-gate should refuse to deploy through without explicit override.
+
+# Deny rule 1: the check report itself must have run. An empty or missing
+# check_summary means cilock captured a malformed envelope; refuse to gate.
+deny[msg] {
+    input.check_summary.distinct_categories == 0
+    msg := "linkerd check report has zero categories — capture failed or report malformed"
+}
+
+# Deny rule 2: zero overall_success means at least one check is in error.
+# Warnings are acceptable (e.g. version-channel mismatches on stable
+# releases); errors are not.
+deny[msg] {
+    input.check_summary.error > 0
+    msg := sprintf("linkerd reports %d error-level check(s) — fix before release", [input.check_summary.error])
+}
+
+# Deny rule 3: edges_summary must be present. If the user wrapped only
+# `linkerd check` without `linkerd viz edges`, we can't enforce the mTLS
+# contract — refuse to gate rather than silently passing.
+deny[msg] {
+    not input.edges_summary
+    msg := "linkerd viz edges report not captured — mTLS contract cannot be enforced; capture `linkerd viz edges -o json` alongside the check"
+}
+
+# Deny rule 4: the mTLS contract — zero tolerance for insecure edges.
+# Real production gates use exactly this rule. The dropbox-clone-dev
+# emojivoto demo reports 15 edges, all secured (insecure == 0).
+deny[msg] {
+    input.edges_summary.insecure > 0
+    msg := sprintf(
+        "linkerd viz edges reports %d insecure (non-mTLS) edge(s) of %d total — refusing to deploy through unmeshed traffic",
+        [input.edges_summary.insecure, input.edges_summary.total_edges]
+    )
+}
+
+# Deny rule 5: the edges report must have captured at least one edge.
+# An empty edges report likely means no meshed traffic — possibly an
+# unmeshed cluster or a too-narrow scope. The capture is meant to prove
+# the mesh is doing its job, not to silently pass a cluster without one.
+deny[msg] {
+    input.edges_summary.total_edges == 0
+    msg := "linkerd viz edges reports 0 edges — either no meshed traffic exists or the capture scope is wrong"
+}

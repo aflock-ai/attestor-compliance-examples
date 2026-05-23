@@ -1,0 +1,42 @@
+{
+  "_comment": "Multi-step verification policy for the linkerd-check example. Validates the full chain: command-run + environment + product capture + linkerd-check, all signed by the same key. The policy denies a deploy if (a) linkerd reports any error-level checks, (b) the edges report is missing, or (c) ANY edge is insecure (non-mTLS).",
+  "expires": "2027-12-31T23:59:59Z",
+  "name": "linkerd-mesh-mtls-gate-v1",
+  "roots": {},
+  "publickeys": {
+    "aa02a00734efb746b1b9f39535a1de279baeb3b8ba9e519ed892bf307fb282ab": {
+      "_comment": "Public key that signed the attestation envelope. Demo key regenerated per run. Replace with your CI Fulcio identity in production.",
+      "keyid": "aa02a00734efb746b1b9f39535a1de279baeb3b8ba9e519ed892bf307fb282ab",
+      "key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQU1WWUp2TnpjSGRRRzNiVEtqTTl3ZTlXT1FXeW8vL0llY3JtVDB5MEtDMUk9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo="
+    }
+  },
+  "steps": {
+    "linkerd-mesh-check": {
+      "_comment_step": "Single step: the linkerd check + viz edges capture. Verify requires all listed attestation types to be present + signed by the functionary + pass the linkerd-mtls Rego.",
+      "name": "linkerd-mesh-check",
+      "attestations": [
+        {"type": "https://aflock.ai/attestations/environment/v0.1", "regopolicies": []},
+        {"type": "https://aflock.ai/attestations/material/v0.3", "regopolicies": []},
+        {"type": "https://aflock.ai/attestations/command-run/v0.1", "regopolicies": []},
+        {"type": "https://aflock.ai/attestations/product/v0.3", "regopolicies": []},
+        {
+          "type": "https://aflock.ai/attestations/linkerd-check/v0.1",
+          "regopolicies": [
+            {
+              "_comment_rego": "Decoded text in decoded-rego-linkerd-mtls.txt — denies on any insecure edge or any error-level check.",
+              "name": "linkerd-mtls-required",
+              "module": "cGFja2FnZSBsaW5rZXJkX210bHMKCiMgVGhpcyBSZWdvIGlzIGV2YWx1YXRlZCBhZ2FpbnN0IHRoZSBsaW5rZXJkLWNoZWNrIHByZWRpY2F0ZSdzIGBhdHRlc3RhdGlvbmAKIyBmaWVsZCDigJQgaS5lLiB0aGUgQXR0ZXN0b3Igc3RydWN0IGVtaXR0ZWQgYnkgdGhlIGxpbmtlcmQtY2hlY2sgYXR0ZXN0b3IuCiMKIyBUaGUgY29udHJhY3Q6IGV2ZXJ5IG1lc2hlZCBlZGdlIE1VU1QgYmUgbVRMUy1zZWN1cmVkLiBBbnkgaW5zZWN1cmUgZWRnZQojIGlzIGEgZGVwbG95LWJsb2NraW5nIGZpbmRpbmcuIExpbmtlcmQgYXV0by1lbnJvbGxzIGV2ZXJ5IG1lc2hlZCBwb2QncwojIHByb3h5IGluIHRoZSB0cnVzdCBhbmNob3I7IGFuIGluc2VjdXJlIGVkZ2UgbWVhbnMgZWl0aGVyIChhKSBhIHdvcmtsb2FkCiMgaXMgdW5tZXNoZWQgKG5vIHNpZGVjYXIgaW5qZWN0aW9uKSwgKGIpIHRydXN0LWFuY2hvciByb3RhdGlvbiBpcyBpbgojIGZsaWdodCwgb3IgKGMpIHNvbWVvbmUgYnlwYXNzZWQgdGhlIHByb3h5LiBFYWNoIG9mIHRob3NlIGlzIHNvbWV0aGluZyBhCiMgcmVsZWFzZS1nYXRlIHNob3VsZCByZWZ1c2UgdG8gZGVwbG95IHRocm91Z2ggd2l0aG91dCBleHBsaWNpdCBvdmVycmlkZS4KCiMgRGVueSBydWxlIDE6IHRoZSBjaGVjayByZXBvcnQgaXRzZWxmIG11c3QgaGF2ZSBydW4uIEFuIGVtcHR5IG9yIG1pc3NpbmcKIyBjaGVja19zdW1tYXJ5IG1lYW5zIGNpbG9jayBjYXB0dXJlZCBhIG1hbGZvcm1lZCBlbnZlbG9wZTsgcmVmdXNlIHRvIGdhdGUuCmRlbnlbbXNnXSB7CiAgICBpbnB1dC5jaGVja19zdW1tYXJ5LmRpc3RpbmN0X2NhdGVnb3JpZXMgPT0gMAogICAgbXNnIDo9ICJsaW5rZXJkIGNoZWNrIHJlcG9ydCBoYXMgemVybyBjYXRlZ29yaWVzIOKAlCBjYXB0dXJlIGZhaWxlZCBvciByZXBvcnQgbWFsZm9ybWVkIgp9CgojIERlbnkgcnVsZSAyOiB6ZXJvIG92ZXJhbGxfc3VjY2VzcyBtZWFucyBhdCBsZWFzdCBvbmUgY2hlY2sgaXMgaW4gZXJyb3IuCiMgV2FybmluZ3MgYXJlIGFjY2VwdGFibGUgKGUuZy4gdmVyc2lvbi1jaGFubmVsIG1pc21hdGNoZXMgb24gc3RhYmxlCiMgcmVsZWFzZXMpOyBlcnJvcnMgYXJlIG5vdC4KZGVueVttc2ddIHsKICAgIGlucHV0LmNoZWNrX3N1bW1hcnkuZXJyb3IgPiAwCiAgICBtc2cgOj0gc3ByaW50ZigibGlua2VyZCByZXBvcnRzICVkIGVycm9yLWxldmVsIGNoZWNrKHMpIOKAlCBmaXggYmVmb3JlIHJlbGVhc2UiLCBbaW5wdXQuY2hlY2tfc3VtbWFyeS5lcnJvcl0pCn0KCiMgRGVueSBydWxlIDM6IGVkZ2VzX3N1bW1hcnkgbXVzdCBiZSBwcmVzZW50LiBJZiB0aGUgdXNlciB3cmFwcGVkIG9ubHkKIyBgbGlua2VyZCBjaGVja2Agd2l0aG91dCBgbGlua2VyZCB2aXogZWRnZXNgLCB3ZSBjYW4ndCBlbmZvcmNlIHRoZSBtVExTCiMgY29udHJhY3Qg4oCUIHJlZnVzZSB0byBnYXRlIHJhdGhlciB0aGFuIHNpbGVudGx5IHBhc3NpbmcuCmRlbnlbbXNnXSB7CiAgICBub3QgaW5wdXQuZWRnZXNfc3VtbWFyeQogICAgbXNnIDo9ICJsaW5rZXJkIHZpeiBlZGdlcyByZXBvcnQgbm90IGNhcHR1cmVkIOKAlCBtVExTIGNvbnRyYWN0IGNhbm5vdCBiZSBlbmZvcmNlZDsgY2FwdHVyZSBgbGlua2VyZCB2aXogZWRnZXMgLW8ganNvbmAgYWxvbmdzaWRlIHRoZSBjaGVjayIKfQoKIyBEZW55IHJ1bGUgNDogdGhlIG1UTFMgY29udHJhY3Qg4oCUIHplcm8gdG9sZXJhbmNlIGZvciBpbnNlY3VyZSBlZGdlcy4KIyBSZWFsIHByb2R1Y3Rpb24gZ2F0ZXMgdXNlIGV4YWN0bHkgdGhpcyBydWxlLiBUaGUgZHJvcGJveC1jbG9uZS1kZXYKIyBlbW9qaXZvdG8gZGVtbyByZXBvcnRzIDE1IGVkZ2VzLCBhbGwgc2VjdXJlZCAoaW5zZWN1cmUgPT0gMCkuCmRlbnlbbXNnXSB7CiAgICBpbnB1dC5lZGdlc19zdW1tYXJ5Lmluc2VjdXJlID4gMAogICAgbXNnIDo9IHNwcmludGYoCiAgICAgICAgImxpbmtlcmQgdml6IGVkZ2VzIHJlcG9ydHMgJWQgaW5zZWN1cmUgKG5vbi1tVExTKSBlZGdlKHMpIG9mICVkIHRvdGFsIOKAlCByZWZ1c2luZyB0byBkZXBsb3kgdGhyb3VnaCB1bm1lc2hlZCB0cmFmZmljIiwKICAgICAgICBbaW5wdXQuZWRnZXNfc3VtbWFyeS5pbnNlY3VyZSwgaW5wdXQuZWRnZXNfc3VtbWFyeS50b3RhbF9lZGdlc10KICAgICkKfQoKIyBEZW55IHJ1bGUgNTogdGhlIGVkZ2VzIHJlcG9ydCBtdXN0IGhhdmUgY2FwdHVyZWQgYXQgbGVhc3Qgb25lIGVkZ2UuCiMgQW4gZW1wdHkgZWRnZXMgcmVwb3J0IGxpa2VseSBtZWFucyBubyBtZXNoZWQgdHJhZmZpYyDigJQgcG9zc2libHkgYW4KIyB1bm1lc2hlZCBjbHVzdGVyIG9yIGEgdG9vLW5hcnJvdyBzY29wZS4gVGhlIGNhcHR1cmUgaXMgbWVhbnQgdG8gcHJvdmUKIyB0aGUgbWVzaCBpcyBkb2luZyBpdHMgam9iLCBub3QgdG8gc2lsZW50bHkgcGFzcyBhIGNsdXN0ZXIgd2l0aG91dCBvbmUuCmRlbnlbbXNnXSB7CiAgICBpbnB1dC5lZGdlc19zdW1tYXJ5LnRvdGFsX2VkZ2VzID09IDAKICAgIG1zZyA6PSAibGlua2VyZCB2aXogZWRnZXMgcmVwb3J0cyAwIGVkZ2VzIOKAlCBlaXRoZXIgbm8gbWVzaGVkIHRyYWZmaWMgZXhpc3RzIG9yIHRoZSBjYXB0dXJlIHNjb3BlIGlzIHdyb25nIgp9Cg=="
+            }
+          ]
+        }
+      ],
+      "functionaries": [
+        {
+          "_comment_functionary": "Public key trust constraint. Replace with a Fulcio cert constraint in production.",
+          "type": "publickey",
+          "publickeyid": "aa02a00734efb746b1b9f39535a1de279baeb3b8ba9e519ed892bf307fb282ab"
+        }
+      ]
+    }
+  }
+}
