@@ -1,0 +1,7 @@
+# Working artifacts produced by reproduce.sh — NOT the committed `raw/` snapshots.
+/codeql-db/
+/attestation.json
+/codeql.sarif
+/key.pem
+/*.product.tree.json
+/*.material.tree.json
