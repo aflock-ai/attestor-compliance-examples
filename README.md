@@ -129,6 +129,7 @@ In addition to per-attestor examples, this repo includes **tool integration exam
 | [Kubescape](https://github.com/kubescape/kubescape) | K8s framework posture | `sarif` (native in dev — [#94](https://github.com/aflock-ai/rookery/issues/94)) | [tool-kubescape-sarif/](./tool-kubescape-sarif/) |
 | [OSV-Scanner](https://github.com/google/osv-scanner) | OSV-schema vuln scan | `sarif` (native in dev — [#91](https://github.com/aflock-ai/rookery/issues/91)) | [tool-osv-scanner-sarif/](./tool-osv-scanner-sarif/) |
 | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | Go reachable-vuln scan | `sarif` (native in dev — [#95](https://github.com/aflock-ai/rookery/issues/95)) | [tool-govulncheck-sarif/](./tool-govulncheck-sarif/) |
+| [testssl.sh](https://testssl.sh) | TLS / FIPS connection scan | `sarif` | [tool-testssl-sarif/](./tool-testssl-sarif/) |
 
 See also [`CANDIDATE-ATTESTORS.md`](./CANDIDATE-ATTESTORS.md) for the full matrix of 35 tools researched as potential additions (17 proposed-new, 8 supported-via-existing, 4 not-supportable).
 
