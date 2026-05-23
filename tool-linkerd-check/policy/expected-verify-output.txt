@@ -1,0 +1,7 @@
+=== POSITIVE: 15/15 edges mTLS-secured ===
+level=info msg="Verification succeeded"
+level=info msg="Step: linkerd-mesh-check"
+[PASS] policy accepted the all-mTLS envelope
+=== NEGATIVE: 1 insecure edge (out of 16) — expect deny ===
+[PASS] policy correctly denied the bypass envelope (cilock rc=1)
+      reports 1 insecure (non-mTLS) edge(s) of 16 total — refusing to deploy through unmeshed traffic 
