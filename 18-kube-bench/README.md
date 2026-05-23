@@ -30,14 +30,20 @@ https://aflock.ai/attestations/git/v0.1
 https://aflock.ai/attestations/material/v0.3
 https://aflock.ai/attestations/command-run/v0.1
 https://aflock.ai/attestations/product/v0.3
+https://aflock.ai/attestations/kube-bench/v0.1
 ```
 
-There is **no** `sarif/v0.1` predicate here. kube-bench `--json` emits its own
-`{Controls, Totals}` shape, not SARIF (no `$schema`, no `runs[]`, no
-`results[]`). Adding the sarif attestor on top of non-SARIF JSON would either
-fail or attach a misleading predicate. The captured report file is bound via
-the `product/v0.3` attestor instead — that's the right primitive for "any
-arbitrary scan output, integrity-bound to this step".
+The **native `kube-bench` attestor** ([rookery PR #148](https://github.com/aflock-ai/rookery/pull/148) landed it in canonical `cilock`) parses kube-bench's `{Controls, Totals}` JSON into a structured predicate with `summary.total_pass / total_fail / total_warn` plus enumerated `failed_checks[]` and `warned_checks[]`. Rego policies can gate directly on those fields without re-parsing the report:
+
+```rego
+deny[msg] {
+  input.summary.total_fail > 0
+  msg := sprintf("kube-bench reports %d CIS failures: %v",
+                 [input.summary.total_fail, [c | c := input.summary.failed_checks[_].id]])
+}
+```
+
+Earlier versions of this example relied only on `product/v0.3` to bind the report file. That still works as a generic integrity primitive, but loses the structured-gating story — release-gate Rego had to walk the raw kube-bench JSON itself.
 
 ## Real result captured from `dropbox-clone-dev`
 
