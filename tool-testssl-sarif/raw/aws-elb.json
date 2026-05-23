@@ -1,0 +1,21 @@
+{
+          "clientProblem1" : [
+                            {
+                                "id"           : "engine_problem",
+                                "severity"     : "WARN",
+                                "finding"      : "No engine or GOST support via engine with your /opt/homebrew/opt/openssl@4/bin/openssl"
+                           }
+          ],
+          "Invocation"  : "testssl.sh --jsonfile-pretty testssl.json --quiet a910d5b6f605c4390953f889459fc5da-996636974.us-east-1.elb.amazonaws.com:443",
+          "at"          : "Coles-MacBook-Pro-2:/opt/homebrew/opt/openssl@4/bin/openssl",
+          "version"     : "3.2.3 ",
+          "openssl"     : "OpenSSL 4.0.0 from Tue Apr 14 12:04:16 2026",
+          "startTime"   : "1779501548",
+          "scanResult"  : [
+                            {
+                                "id"           : "scanProblem",
+                                "severity"     : "FATAL",
+                                "finding"      : "Can't connect to '100.51.139.122:443' Make sure a firewall is not between you and your scanning target!"
+                           }          ],
+                    "scanTime"  : "Scan interrupted"
+}
