@@ -1,0 +1,5 @@
+/attestation.json
+/falco-events.jsonl
+/key.pem
+/*.product.tree.json
+/*.material.tree.json
