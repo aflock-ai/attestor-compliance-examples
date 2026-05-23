@@ -1,0 +1,6 @@
+# Local working artifacts from reproduce.sh — do NOT exclude raw/.
+/key.pem
+/attestation.json
+/nuclei.sarif
+/attestation.material.tree.json
+/attestation.product.tree.json

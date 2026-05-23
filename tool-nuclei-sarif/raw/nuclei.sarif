@@ -1,0 +1,616 @@
+{
+	"version": "2.1.0",
+	"$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+	"runs": [
+		{
+			"tool": {
+				"driver": {
+					"name": "Nuclei",
+					"organization": "ProjectDiscovery",
+					"product": "Nuclei",
+					"shortDescription": {
+						"text": "Fast and Customizable Vulnerability Scanner"
+					},
+					"fullDescription": {
+						"text": "Fast and customizable vulnerability scanner based on simple YAML based DSL"
+					},
+					"fullName": "Nuclei v3.8.0",
+					"semanticVersion": "v3.8.0",
+					"downloadUri": "https://github.com/projectdiscovery/nuclei/releases",
+					"rules": [
+						{
+							"id": "wordpress-eol",
+							"name": "WordPress End-of-Life - Detect",
+							"shortDescription": {
+								"text": "WordPress End-of-Life - Detect (wordpress-eol) found on public-firing-range.appspot.com"
+							},
+							"fullDescription": {
+								"text": "Detected WordPress versions that have reached End-of-Life (EOL) and no longer receive security updates.\n\nMore details at\nhttps://cloud.projectdiscovery.io/public/wordpress-eol\n"
+							},
+							"properties": {
+								"security-severity": "1",
+								"tags": [
+									"security"
+								]
+							}
+						},
+						{
+							"id": "google-frontend-httpserver",
+							"name": "Google frontend HttpServer",
+							"fullDescription": {
+								"text": "\nMore details at\nhttps://cloud.projectdiscovery.io/public/google-frontend-httpserver\n"
+							},
+							"properties": {
+								"security-severity": "1",
+								"tags": [
+									"security"
+								]
+							}
+						},
+						{
+							"id": "http-missing-security-headers",
+							"name": "HTTP Missing Security Headers",
+							"shortDescription": {
+								"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+							},
+							"fullDescription": {
+								"text": "This template searches for missing HTTP security headers. The impact of these missing headers can vary.\n\nMore details at\nhttps://cloud.projectdiscovery.io/public/http-missing-security-headers\n"
+							},
+							"properties": {
+								"security-severity": "1",
+								"tags": [
+									"security"
+								]
+							}
+						}
+					]
+				}
+			},
+			"results": [
+				{
+					"ruleId": "wordpress-eol",
+					"rule": {
+						"id": "wordpress-eol",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "WordPress End-of-Life - Detect (wordpress-eol) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "google-frontend-httpserver",
+					"rule": {
+						"id": "google-frontend-httpserver",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "Google frontend HttpServer (google-frontend-httpserver) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				},
+				{
+					"ruleId": "http-missing-security-headers",
+					"ruleIndex": 1,
+					"rule": {
+						"id": "http-missing-security-headers",
+						"toolComponent": {}
+					},
+					"level": "none",
+					"kind": "open",
+					"message": {
+						"text": "HTTP Missing Security Headers (http-missing-security-headers) found on public-firing-range.appspot.com"
+					},
+					"analysisTarget": {},
+					"webRequest": {
+						"body": {}
+					},
+					"webResponse": {
+						"body": {}
+					},
+					"locations": [
+						{
+							"message": {
+								"text": "public-firing-range.appspot.com"
+							},
+							"physicalLocation": {
+								"address": {},
+								"artifactLocation": {
+									"uri": "//",
+									"description": {
+										"text": "public-firing-range.appspot.com"
+									}
+								}
+							}
+						}
+					]
+				}
+			],
+			"invocations": [
+				{
+					"commandLine": "nuclei",
+					"arguments": [
+						"-u",
+						"https://public-firing-range.appspot.com/",
+						"-t",
+						"http/exposures/",
+						"-t",
+						"http/technologies/",
+						"-t",
+						"http/misconfiguration/",
+						"-sarif-export",
+						"nuclei.sarif",
+						"-rl",
+						"20",
+						"-c",
+						"25",
+						"-no-color",
+						"-stats",
+						"-timeout",
+						"8",
+						"-retries",
+						"1"
+					],
+					"responseFiles": [
+						{
+							"uri": "file:///nuclei.sarif",
+							"description": {
+								"text": "Nuclei Sarif Report"
+							}
+						}
+					],
+					"executionSuccessful": false,
+					"executableLocation": {},
+					"workingDirectory": {},
+					"stdin": {},
+					"stdout": {},
+					"stderr": {}
+				}
+			]
+		}
+	]
+}
