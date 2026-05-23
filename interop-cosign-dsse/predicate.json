@@ -1,0 +1,9 @@
+{
+  "builder": { "id": "https://cilock.aflock.ai/demo-builder" },
+  "buildType": "https://github.com/aflock-ai/rookery/cilock-cosign-interop-demo",
+  "invocation": {
+    "configSource": { "uri": "git+https://github.com/aflock-ai/rookery", "digest": { "sha1": "demo" } }
+  },
+  "buildConfig": { "steps": [{"command": ["go", "build", "-o", "hello", "hello.go"], "env": null}] },
+  "metadata": { "buildInvocationId": "cosign-demo-001", "completeness": { "parameters": true, "environment": false, "materials": false }, "reproducible": false }
+}
