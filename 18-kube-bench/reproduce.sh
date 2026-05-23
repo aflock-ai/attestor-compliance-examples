@@ -27,10 +27,11 @@ mkdir -p "${HERE}/_validation"
 
 # 4. Run cilock — waits for the Job, captures kube-bench JSON report, signs everything
 cd "${HERE}"
-cilock run --step kube-bench-scan \
+KUBE_BENCH_CLUSTER_NAME="${KUBE_BENCH_CLUSTER_NAME:-$(kubectl config current-context)}" \
+  cilock run --step kube-bench-scan \
   --signer-file-key-path _validation/key.pem \
   --outfile kube-bench-attestation.json \
-  --attestations environment,git \
+  --attestations kube-bench,environment,git \
   --enable-archivista=false \
   -- sh -c "kubectl wait --for=condition=complete job/kube-bench -n ${NAMESPACE} --timeout=300s \
             && kubectl logs -n ${NAMESPACE} job/kube-bench --tail=-1 > kube-bench-report.json \

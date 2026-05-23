@@ -87,7 +87,7 @@ against the artifact we're shipping, AND the scan was clean).
 | 15 | `oci` | container | validated | vm | [15-oci/](./15-oci/) |
 | 16 | `docker` | container | pending | vm-buildx | [16-docker/](./16-docker/) |
 | 17 | `docker-bench` | container | pending | vm | [17-docker-bench/](./17-docker-bench/) |
-| 18 | `kube-bench` | container | pending | vm-eks | [18-kube-bench/](./18-kube-bench/) |
+| 18 | `kube-bench` | container | validated | mac-real-eks | [18-kube-bench/](./18-kube-bench/) |
 | 19 | `github` | ci | validated | gh-actions | [19-github/](./19-github/) |
 | 20 | `github-action` | ci | validated | gh-actions | [20-github-action/](./20-github-action/) |
 | 21 | `githubwebhook` | ci | blocked | webhook-scope | [21-githubwebhook/](./21-githubwebhook/) |
