@@ -1,0 +1,6 @@
+codeql-db/
+attestation.json
+codeql.sarif
+key.pem
+*.product.tree.json
+*.material.tree.json
