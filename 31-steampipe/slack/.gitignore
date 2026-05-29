@@ -1,0 +1,12 @@
+# Run artifacts — contain live workspace data and a throwaway signing key.
+# Never commit these; the committed raw/ sample is synthetic.
+key.pem
+key.pub
+attestation.json
+attestation.json-*.json
+attestation.*.tree.json
+attestation.*.detection.json
+policy.json
+policy-signed.json
+out/
+debug.log
