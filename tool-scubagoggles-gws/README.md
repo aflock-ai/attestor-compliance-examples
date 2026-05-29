@@ -53,15 +53,27 @@ you, and all scopes are read-only. See [`reproduce.sh`](./reproduce.sh).
 
 ## The policy
 
-[`policy/gws_commoncontrols.rego`](./policy/gws_commoncontrols.rego) is a
-TestifySec-authored, deny-based Common Controls policy that reads
+The `policy/` directory holds TestifySec-authored, deny-based rego that reads
 `input.predicate.config` directly. It is **our** rego — CISA's baselines read
 `input.policies` and emit a `tests` set, which doesn't fit the policyverify
 `deny[]` contract, so we re-expressed the control intent (informed by CISA's
-SCuBA baseline, CC0-1.0). It checks phishing-resistant MFA (1.1), the 12h
-session cap (4.1), the 2–8 super-admin range (6.2), and 2SV enforcement.
+SCuBA baselines, CC0-1.0). Three baselines are covered:
 
-Unit tests: `opa test policy/`.
+| File | GWS baseline | Checks |
+|---|---|---|
+| `gws_commoncontrols.rego` | Common Controls | phishing-resistant MFA (1.1), 12h session cap (4.1), 2–8 super-admins (6.2), 2SV enforcement |
+| `gws_gmail.rego` | Gmail | DMARC enforcing (not `p=none`), SPF + DKIM published, anomalous-attachment protection |
+| `gws_drive.rego` | Drive & Docs | external sharing not unrestricted, no web publishing |
+
+**NIST 800-171 coverage.** These baselines were chosen to give a CUI assessment
+the evidence it needs across the families that map to Google Workspace config:
+Access Control (3.1 — least privilege, session, CUI sharing), Identification &
+Authentication (3.5 — MFA, password policy), and System & Communications
+Protection (3.13 — email authenticity/anti-spoofing). The precise
+GWS-control → 800-171-requirement mapping is the platform's job; this policy
+only checks GWS controls and references their GWS ids.
+
+Unit tests: `opa test policy/` (15 cases).
 
 ## Full cycle: create → verify
 

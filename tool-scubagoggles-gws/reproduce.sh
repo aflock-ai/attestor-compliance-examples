@@ -41,7 +41,7 @@ cilock run --step gws-assessment \
   --outfile attestation.json \
   --attestations scubagoggles,environment \
   --enable-archivista=false \
-  -- scubagoggles gws -b commoncontrols -c "$CREDS" -o ./out --quiet
+  -- scubagoggles gws -b commoncontrols gmail drive -c "$CREDS" -o ./out --quiet
 
 echo "== Captured facts, not a verdict (leakedVerdict must be false) =="
 jq -r '.payload' attestation.json | base64 -d \
@@ -55,9 +55,11 @@ KEYID=$(jq -r '.signatures[0].keyid' attestation.json)
 jq -n \
   --arg keyid "$KEYID" \
   --arg key "$(base64 < key.pub | tr -d '\n')" \
-  --arg rego "$(base64 < policy/gws_commoncontrols.rego | tr -d '\n')" \
+  --arg cc "$(base64 < policy/gws_commoncontrols.rego | tr -d '\n')" \
+  --arg gmail "$(base64 < policy/gws_gmail.rego | tr -d '\n')" \
+  --arg drive "$(base64 < policy/gws_drive.rego | tr -d '\n')" \
   '{
-    expires:"2027-12-31T23:59:59Z", name:"gws-commoncontrols-validation-v1", roots:{},
+    expires:"2027-12-31T23:59:59Z", name:"gws-nist-800-171-validation-v1", roots:{},
     publickeys: { ($keyid): { keyid:$keyid, key:$key } },
     steps: { "gws-assessment": {
       name:"gws-assessment",
@@ -67,7 +69,11 @@ jq -n \
         {type:"https://aflock.ai/attestations/command-run/v0.1", regopolicies:[]},
         {type:"https://aflock.ai/attestations/product/v0.3",     regopolicies:[]},
         {type:"https://aflock.ai/attestations/scubagoggles/v0.1",
-         regopolicies:[{name:"gws-commoncontrols", module:$rego}]}
+         regopolicies:[
+           {name:"gws-commoncontrols", module:$cc},
+           {name:"gws-gmail",          module:$gmail},
+           {name:"gws-drive",          module:$drive}
+         ]}
       ],
       functionaries:[{type:"publickey", publickeyid:$keyid}]
     }}
