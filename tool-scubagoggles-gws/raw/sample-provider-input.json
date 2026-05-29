@@ -1,0 +1,26 @@
+{
+  "_comment": "SYNTHETIC example data — NOT a real tenant. Shaped like the scubagoggles attestor predicate so `opa eval` can demonstrate the policy offline. This deliberately violates three Common Controls so the deny rules fire.",
+  "predicate": {
+    "tool": "ScubaGoggles",
+    "toolVersion": "0.6.0",
+    "tenantId": "C0EXAMPLE",
+    "domainName": "example.org",
+    "displayName": "Example Org",
+    "config": {
+      "tenant_info": { "ID": "C0EXAMPLE", "domain": "example.org", "topLevelOU": "Example Org" },
+      "domains": ["example.org"],
+      "organizational_unit_names": ["", "Engineering"],
+      "super_admins": [
+        { "primaryEmail": "admin@example.org", "orgUnitPath": "/" }
+      ],
+      "policies": {
+        "Example Org": {
+          "security_two_step_verification_enforcement": { "enforcedFrom": "2024-02-02T05:00:00Z" },
+          "security_two_step_verification_enforcement_factor": { "allowedSignInFactorSet": "NO_TELEPHONY" },
+          "security_session_controls": { "webSessionDuration": "72000s" }
+        }
+      },
+      "baseline_suffix": "v0.6"
+    }
+  }
+}
